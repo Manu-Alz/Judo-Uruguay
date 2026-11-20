@@ -1,0 +1,12 @@
+{
+  "name": "Judo Uruguay",
+  "short_name": "Judo UY",
+  "description": "Técnicas del Kodokan por cinturón, progreso y dojo.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0b0d",
+  "theme_color": "#0b0b0d",
+  "lang": "es",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

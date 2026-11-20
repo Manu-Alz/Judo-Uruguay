@@ -1,0 +1,137 @@
+/* =========================================================
+   Datos propios de Judo Uruguay (editables sin tocar app.js)
+   ========================================================= */
+
+/* Significado en español de cada técnica */
+const WAZA_ES = {
+  "Seoi-nage": "Proyección por encima del hombro",
+  "Ippon-seoi-nage": "Proyección sobre el hombro a un brazo",
+  "Seoi-otoshi": "Caída sobre el hombro",
+  "Tai-otoshi": "Caída del cuerpo",
+  "Kata-guruma": "Rueda de hombros",
+  "Sukui-nage": "Proyección en cuchara",
+  "Obi-otoshi": "Caída por el cinturón",
+  "Uki-otoshi": "Caída flotante",
+  "Sumi-otoshi": "Caída en la esquina",
+  "Yama-arashi": "Tormenta de montaña",
+  "Obi-tori-gaeshi": "Volteo tomando el cinturón",
+  "Morote-gari": "Siega a dos manos",
+  "Kuchiki-taoshi": "Derribo del árbol podrido",
+  "Kibisu-gaeshi": "Volteo del talón",
+  "Uchi-mata-sukashi": "Esquiva de uchi-mata",
+  "Ko-uchi-gaeshi": "Contra de ko-uchi-gari",
+  "Uki-goshi": "Cadera flotante",
+  "O-goshi": "Gran cadera",
+  "Koshi-guruma": "Rueda de cadera",
+  "Tsurikomi-goshi": "Cadera con elevación y tirón",
+  "Sode-tsurikomi-goshi": "Cadera con tirón de manga",
+  "Harai-goshi": "Barrido de cadera",
+  "Tsuri-goshi": "Cadera en elevación",
+  "Hane-goshi": "Cadera resorte",
+  "Utsuri-goshi": "Cambio de cadera",
+  "Ushiro-goshi": "Cadera hacia atrás",
+  "De-ashi-harai": "Barrido del pie que avanza",
+  "Hiza-guruma": "Rueda de rodilla",
+  "Sasae-tsurikomi-ashi": "Bloqueo de pie con elevación y tirón",
+  "O-soto-gari": "Gran siega exterior",
+  "O-uchi-gari": "Gran siega interior",
+  "Ko-soto-gari": "Pequeña siega exterior",
+  "Ko-uchi-gari": "Pequeña siega interior",
+  "Okuri-ashi-harai": "Barrido de pies acompañando",
+  "Uchi-mata": "Interior del muslo",
+  "Ko-soto-gake": "Pequeño enganche exterior",
+  "Ashi-guruma": "Rueda de pierna",
+  "Harai-tsurikomi-ashi": "Barrido de pie con elevación y tirón",
+  "O-guruma": "Gran rueda",
+  "O-soto-guruma": "Gran rueda exterior",
+  "O-soto-otoshi": "Gran caída exterior",
+  "Tsubame-gaeshi": "Contra de la golondrina",
+  "O-soto-gaeshi": "Contra de o-soto-gari",
+  "O-uchi-gaeshi": "Contra de o-uchi-gari",
+  "Hane-goshi-gaeshi": "Contra de hane-goshi",
+  "Harai-goshi-gaeshi": "Contra de harai-goshi",
+  "Uchi-mata-gaeshi": "Contra de uchi-mata",
+  "Tomoe-nage": "Proyección en círculo",
+  "Sumi-gaeshi": "Volteo de esquina",
+  "Hikikomi-gaeshi": "Volteo tirando hacia adentro",
+  "Tawara-gaeshi": "Volteo de la bolsa de arroz",
+  "Ura-nage": "Proyección hacia atrás",
+  "Yoko-otoshi": "Caída lateral",
+  "Tani-otoshi": "Caída en el valle",
+  "Hane-makikomi": "Enrollado con resorte",
+  "Soto-makikomi": "Enrollado exterior",
+  "Uki-waza": "Técnica flotante",
+  "Yoko-wakare": "Separación lateral",
+  "Yoko-guruma": "Rueda lateral",
+  "Yoko-gake": "Enganche lateral",
+  "Daki-wakare": "Separación abrazando",
+  "Uchi-makikomi": "Enrollado interior",
+  "Kani-basami": "Tijera de cangrejo",
+  "O-soto-makikomi": "Enrollado con o-soto-gari",
+  "Uchi-mata-makikomi": "Enrollado con uchi-mata",
+  "Harai-makikomi": "Enrollado con harai-goshi",
+  "Ko-uchi-makikomi": "Enrollado con ko-uchi-gari",
+  "Kawazu-gake": "Enganche de la rana",
+  "Kesa-gatame": "Control en estola",
+  "Kuzure-kesa-gatame": "Estola modificada",
+  "Ushiro-kesa-gatame": "Estola hacia atrás",
+  "Kata-gatame": "Control de hombro",
+  "Kami-shiho-gatame": "Cuatro cuadrantes superior",
+  "Kuzure-kami-shiho-gatame": "Cuatro cuadrantes superior modificado",
+  "Yoko-shiho-gatame": "Cuatro cuadrantes lateral",
+  "Tate-shiho-gatame": "Cuatro cuadrantes montado",
+  "Uki-gatame": "Control flotante",
+  "Ura-gatame": "Control por detrás",
+  "Nami-juji-jime": "Estrangulación en cruz normal",
+  "Gyaku-juji-jime": "Estrangulación en cruz inversa",
+  "Kata-juji-jime": "Estrangulación en media cruz",
+  "Hadaka-jime": "Estrangulación desnuda",
+  "Okuri-eri-jime": "Estrangulación deslizando la solapa",
+  "Kata-ha-jime": "Estrangulación de ala simple",
+  "Katate-jime": "Estrangulación a una mano",
+  "Ryote-jime": "Estrangulación a dos manos",
+  "Sode-guruma-jime": "Estrangulación con la manga",
+  "Tsukkomi-jime": "Estrangulación embistiendo",
+  "Sankaku-jime": "Estrangulación en triángulo",
+  "Do-jime": "Estrangulación de tronco",
+  "Ude-garami": "Enredo de brazo",
+  "Ude-hishigi-juji-gatame": "Luxación de brazo en cruz",
+  "Ude-hishigi-ude-gatame": "Luxación con el antebrazo",
+  "Ude-hishigi-hiza-gatame": "Luxación con la rodilla",
+  "Ude-hishigi-waki-gatame": "Luxación con la axila",
+  "Ude-hishigi-hara-gatame": "Luxación con el abdomen",
+  "Ude-hishigi-ashi-gatame": "Luxación con la pierna",
+  "Ude-hishigi-te-gatame": "Luxación con la mano",
+  "Ude-hishigi-sankaku-gatame": "Luxación en triángulo",
+  "Ashi-garami": "Enredo de pierna",
+};
+
+/* Videos propios: { "slug": "ID_DE_YOUTUBE" }  → se muestran dentro de la técnica.
+   Ejemplo: "o-goshi": "dQw4w9WgXcQ"
+   Si no hay video, la técnica muestra el GIF de media/waza/<slug>.gif (si existe)
+   y un botón para buscarla en YouTube. */
+const VIDEOS = {};
+
+/* Alumnos del grupo (los carga el sensei).
+   belt: blanco | amarillo | naranja | verde | azul | marron | negro
+   dominadas: lista de slugs (nombre de la técnica en minúsculas) o un número.
+   Cada alumno puede tocar "Copiar mi ficha" en Progreso y pegarte su línea acá. */
+const ALUMNOS = [
+  { name: "Ejemplo · Camila", belt: "amarillo", dominadas: 5, demo: true },
+  { name: "Ejemplo · Tomás", belt: "naranja", dominadas: 14, demo: true },
+  { name: "Ejemplo · Sofía", belt: "verde", dominadas: 27, demo: true },
+];
+
+/* Links útiles */
+const LINKS = [
+  { t: "Judokan Uruguay", d: "Asociación de Artes Marciales Judokan · Montevideo", u: "https://manu-alz.github.io/Judokan/" },
+  { t: "Kodokan (oficial)", d: "Instituto fundado por Jigoro Kano", u: "https://kodokan.org/" },
+  { t: "IJF · Federación Internacional", d: "Resultados, reglas y rankings", u: "https://www.ijf.org/" },
+  { t: "Canal de YouTube del Kodokan", d: "Videos oficiales de técnicas", u: "https://www.youtube.com/results?search_query=Kodokan+Judo+Institute" },
+];
+
+/* Categorías de peso olímpicas */
+const WEIGHTS = {
+  Masculino: ["−60", "−66", "−73", "−81", "−90", "−100", "+100"],
+  Femenino: ["−48", "−52", "−57", "−63", "−70", "−78", "+78"],
+};
