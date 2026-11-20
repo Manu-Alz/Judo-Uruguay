@@ -97,5 +97,9 @@ const VIDEOS = {
   "ude-hishigi-hara-gatame": "ZzEycg8R_9M",
   "ude-hishigi-ashi-gatame": "ClY7g_pX-4s",
   "ashi-garami": "BWWb0GoAtZw",
+  "sasae-tsurikomi-ashi": "699i--pvYmE",
+  "sankaku-jime": "lq1CUBRAm7s",
+  "ude-hishigi-te-gatame": "6DnvhY0tQVM",
+  "ude-hishigi-sankaku-gatame": "WefAmW4azhk",
 };
 

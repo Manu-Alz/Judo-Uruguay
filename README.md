@@ -13,8 +13,7 @@ App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con
 ## Videos
 Se usa el **reproductor oficial embebido de YouTube** con los videos del canal **KODOKAN** (la serie de las 100 técnicas). No se copia ni se descarga nada: el video se carga desde YouTube al tocar play.
 
-`js/videos.js` guarda el ID de cada video (`"o-goshi": "yhu1mfy2vJ4"`). Hoy hay 96 de 100; faltan:
-Sasae-tsurikomi-ashi, Sankaku-jime, Ude-hishigi-te-gatame y Ude-hishigi-sankaku-gatame. Para sumar uno, agregar su línea en `VIDEOS`.
+`js/videos.js` guarda el ID de cada video (`"o-goshi": "yhu1mfy2vJ4"`). Hay los 100.
 
 ### Video o GIF propio del dojo
 Si existe `media/waza/<nombre-en-minúsculas>.gif` (ej. `media/waza/o-goshi.gif`), se muestra arriba del video oficial.
