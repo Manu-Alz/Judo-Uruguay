@@ -117,9 +117,10 @@ const VIDEOS = {};
    dominadas: lista de slugs (nombre de la técnica en minúsculas) o un número.
    Cada alumno puede tocar "Copiar mi ficha" en Progreso y pegarte su línea acá. */
 const ALUMNOS = [
-  { name: "Ejemplo · Camila", belt: "amarillo", dominadas: 5, demo: true },
-  { name: "Ejemplo · Tomás", belt: "naranja", dominadas: 14, demo: true },
-  { name: "Ejemplo · Sofía", belt: "verde", dominadas: 27, demo: true },
+  { name: "Agustín", belt: "blanco", dominadas: 0 },
+  { name: "Manuel", belt: "blanco", dominadas: 0 },
+  { name: "Maxime", belt: "blanco", dominadas: 0 },
+  { name: "Thiago", belt: "blanco", dominadas: 0 },
 ];
 
 /* Links útiles */
