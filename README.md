@@ -1,27 +1,23 @@
 # Judo Uruguay
 
-App del grupo de judo: las 100 técnicas del Kodokan por cinturón, **cada una animada**, progreso personal y el dojo. Pensada primero para el teléfono (se instala en la pantalla de inicio) y también funciona en PC. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
+App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con su video, progreso personal y el dojo. Pensada primero para el teléfono (se instala en la pantalla de inicio) y también funciona en PC. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
 
 ## Secciones
-- **Inicio**: técnica del día en movimiento, tu camino por cinturón, frase del día.
-- **Técnicas**: las 100 con miniatura del momento clave, filtros por cinturón / proyección o suelo / estado, y buscador.
-- **Detalle**: animación en loop con play/pausa, cámara lenta (1×, 0.5×, 0.25×), línea de tiempo y botones por fase (Agarre, Kuzushi, Tsukuri, Kake, Ippon). Se marca como sin empezar, en práctica o dominada.
+- **Inicio**: técnica del día con su video, tu camino por cinturón, frase del día.
+- **Técnicas**: las 100, con filtros por cinturón / proyección o suelo / estado y buscador. Las que tienen video llevan un ícono de play.
+- **Detalle**: el video se reproduce dentro de la página, con significado, grupo, origen y botones para marcar la técnica como sin empezar, en práctica o dominada.
 - **Progreso**: porcentaje por cinturón, tu ficha, respaldo.
 - **Dojo**: el grupo en orden alfabético, sin ranking.
 - **Más**: glosario, reglas, categorías de peso, links.
 
-## Las secuencias (storyboard)
-Cada técnica se muestra como una secuencia de cuadros que se desliza con el dedo: Agarre, Kuzushi, Tsukuri, Kake, Ippon. Cada cuadro muestra la posición anterior en fantasma y flechas de movimiento (azul tori, naranja uke), como en un libro de judo.
+## Videos
+Se usa el **reproductor oficial embebido de YouTube** con los videos del canal **KODOKAN** (la serie de las 100 técnicas). No se copia ni se descarga nada: el video se carga desde YouTube al tocar play.
 
-Se dibujan por código (`js/engine.js`): dos muñecos, tori (azul) y uke (blanco). Las 68 proyecciones se ven de costado y las 32 técnicas de suelo desde arriba.
+`js/videos.js` guarda el ID de cada video (`"o-goshi": "yhu1mfy2vJ4"`). Hoy hay 96 de 100; faltan:
+Sasae-tsurikomi-ashi, Sankaku-jime, Ude-hishigi-te-gatame y Ude-hishigi-sankaku-gatame. Para sumar uno, agregar su línea en `VIDEOS`.
 
-- `js/nage.js`: plantillas de proyección (con giro, siega, barrido, sacrificio, tackle, contraataque) y la tabla que asigna cada técnica a su plantilla.
-- `js/katame.js`: poses finales de inmovilizaciones, estrangulaciones y luxaciones.
-
-Son **esquemáticas**: muestran la secuencia general, no el detalle fino de cada agarre. Varias técnicas parecidas comparten plantilla. Para afinar una, se edita su entrada en `nage.js` / `katame.js`.
-
-### Reemplazar por un GIF real
-Si un GIF propio existe en `media/waza/<nombre-en-minúsculas>.gif` (ej. `media/waza/o-goshi.gif`), la app lo muestra en lugar de la animación. Usá material del grupo o con permiso.
+### Video o GIF propio del dojo
+Si existe `media/waza/<nombre-en-minúsculas>.gif` (ej. `media/waza/o-goshi.gif`), se muestra arriba del video oficial.
 
 ## Alumnos
 Cada uno toca **Progreso → Copiar mi ficha** y te manda el texto. Se pega en `ALUMNOS` de `js/extra.js`. El progreso personal vive en el teléfono de cada uno (localStorage).

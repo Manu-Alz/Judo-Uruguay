@@ -58,7 +58,26 @@ main{padding:calc(var(--top-h) + var(--safe-t) + 8px) 18px calc(var(--tab-h) + v
 .ph[aria-pressed="true"]{background:var(--navy);color:#fff}
 .note{font-size:.76rem;color:var(--sub);margin-top:12px;line-height:1.45}
 
-/* Storyboard */
+/* Video */
+.video{border-radius:24px;overflow:hidden;background:#0c1226;aspect-ratio:16/9;box-shadow:var(--sh);position:relative}
+.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vposter{position:relative;display:block;width:100%;height:100%;background:#0c1226 center/cover no-repeat;text-decoration:none}
+.vposter::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,18,38,.05),rgba(12,18,38,.45))}
+.vposter.small{aspect-ratio:16/9;height:auto;border-radius:18px;margin-top:2px}
+.vplay{position:absolute;left:50%;top:50%;z-index:1;width:68px;height:68px;margin:-34px 0 0 -34px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;box-shadow:0 10px 26px -6px rgba(0,0,0,.5)}
+.vplay svg{width:30px;height:30px;margin-left:3px}
+.vsrc{position:absolute;left:12px;bottom:12px;z-index:1;background:rgba(12,18,38,.78);color:#fff;font-size:.7rem;font-weight:700;padding:5px 10px;border-radius:99px}
+.vnone{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:20px;color:#cfd6e8;gap:4px}
+.vnone b{color:#fff;font-size:1.05rem}.vnone span{font-size:.85rem}
+.gifbox{border-radius:24px;overflow:hidden;background:#000;box-shadow:var(--sh)}
+.gifbox img{display:block;width:100%;height:auto}
+.hero .vposter.small{margin-bottom:0}
+.nb{position:relative;flex:0 0 58px;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 28%,#fff);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 55%,#fff)}
+.nb b{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.pv{position:absolute;right:-4px;bottom:-4px;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 2.5px #fff}
+.pv svg{width:11px;height:11px;margin-left:1px}
+
+/* (heredado) */
 .story{display:flex;gap:12px;overflow-x:auto;margin:0 -18px;padding:4px 18px 12px;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .story::-webkit-scrollbar{display:none}
 .panel{flex:0 0 88%;scroll-snap-align:center;margin:0;background:var(--card);border-radius:24px;box-shadow:var(--sh);overflow:hidden}

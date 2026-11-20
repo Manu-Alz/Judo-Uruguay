@@ -106,11 +106,6 @@ const WAZA_ES = {
   "Ashi-garami": "Enredo de pierna",
 };
 
-/* Videos propios: { "slug": "ID_DE_YOUTUBE" }  → se muestran dentro de la técnica.
-   Ejemplo: "o-goshi": "dQw4w9WgXcQ"
-   Si no hay video, la técnica muestra el GIF de media/waza/<slug>.gif (si existe)
-   y un botón para buscarla en YouTube. */
-const VIDEOS = {}; /* ya no se usa: las técnicas se muestran con animación propia */
 
 /* Alumnos del grupo (los carga el sensei).
    belt: blanco | amarillo | naranja | verde | azul | marron | negro
