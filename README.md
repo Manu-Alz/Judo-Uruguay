@@ -10,8 +10,10 @@ App del grupo de judo: las 100 técnicas del Kodokan por cinturón, **cada una a
 - **Dojo**: el grupo en orden alfabético, sin ranking.
 - **Más**: glosario, reglas, categorías de peso, links.
 
-## Las animaciones
-Son propias, generadas por código (`js/engine.js`): dos muñecos, tori (azul) y uke (blanco). Las 68 proyecciones se ven de costado y las 32 técnicas de suelo desde arriba.
+## Las secuencias (storyboard)
+Cada técnica se muestra como una secuencia de cuadros que se desliza con el dedo: Agarre, Kuzushi, Tsukuri, Kake, Ippon. Cada cuadro muestra la posición anterior en fantasma y flechas de movimiento (azul tori, naranja uke), como en un libro de judo.
+
+Se dibujan por código (`js/engine.js`): dos muñecos, tori (azul) y uke (blanco). Las 68 proyecciones se ven de costado y las 32 técnicas de suelo desde arriba.
 
 - `js/nage.js`: plantillas de proyección (con giro, siega, barrido, sacrificio, tackle, contraataque) y la tabla que asigna cada técnica a su plantilla.
 - `js/katame.js`: poses finales de inmovilizaciones, estrangulaciones y luxaciones.

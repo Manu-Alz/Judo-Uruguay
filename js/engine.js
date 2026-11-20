@@ -329,5 +329,86 @@ function phaseAt(A, tt) {
   return idx;
 }
 
-window.JE = { build, draw, phaseAt, COL };
+/* ---------- Storyboard: cuadros limpios con fantasma y flechas ---------- */
+const poseAt = (A, tt) => (A.top ? topFrame(A, tt) : frame(A, tt));
+function figPoints(A, F) {
+  const pts = [];
+  for (const who of ["T", "U"]) { const q = F[who]; pts.push(q.H, q.C, ...q.arms.flat(), ...q.legs.flat(), A.top ? q.N : q.S); }
+  return pts;
+}
+function fitCamera(A, times, W, H, pad = .4) {
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const t of times) for (const p of figPoints(A, poseAt(A, t))) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+  if (!A.top) y0 = Math.min(y0, -.05);
+  const w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad;
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, sc: Math.min(W / w, H / h, W / 2.7) };
+}
+const ST = { toriFill: "#2c58e0", toriEdge: "#0d1b52", ukeFill: "#ffffff", ukeEdge: "#2a3350" };
+function drawFigStory(ctx, q, P, who, belt, tx, sc) {
+  const isT = who === "T", fill = isT ? ST.toriFill : ST.ukeFill, edge = isT ? ST.toriEdge : ST.ukeEdge;
+  const X = (v) => tx(v);
+  const seg = (a, b, w) => { ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(...X(a)); ctx.lineTo(...X(b)); ctx.strokeStyle = edge; ctx.lineWidth = (w + .055) * sc; ctx.stroke(); ctx.strokeStyle = fill; ctx.lineWidth = w * sc; ctx.stroke(); };
+  const [lN, lF] = q.legs, [aN, aF] = q.arms;
+  seg(q.H, lF[0], .18); seg(lF[0], lF[1], .14); seg(lF[1], lF[2], .1);
+  seg(q.S, aF[0], .12); seg(aF[0], aF[1], .1);
+  ctx.fillStyle = COL.skin; dot(ctx, X(aF[1]), .06 * sc);
+  seg(q.H, q.S, .3);
+  /* solapa en V y cinturón */
+  const tv = [q.S[0] - q.H[0], q.S[1] - q.H[1]], tl = Math.hypot(...tv) || 1, u = [tv[0] / tl, tv[1] / tl];
+  const sg = Math.sign(P.d) || 1, fr = [u[1] * sg, -u[0] * sg];
+  const v0 = [q.S[0] + fr[0] * .02, q.S[1] + fr[1] * .02], v1 = [q.H[0] + tv[0] * .3 + fr[0] * .12, q.H[1] + tv[1] * .3 + fr[1] * .12];
+  ctx.beginPath(); ctx.moveTo(...X(v0)); ctx.lineTo(...X(v1)); ctx.strokeStyle = edge; ctx.globalAlpha *= .55; ctx.lineWidth = .04 * sc; ctx.stroke(); ctx.globalAlpha /= .55;
+  const nv = [-u[1], u[0]], bp = [q.H[0] + tv[0] * .09, q.H[1] + tv[1] * .09];
+  ctx.lineCap = "butt"; ctx.beginPath(); ctx.moveTo(...X([bp[0] + nv[0] * .17, bp[1] + nv[1] * .17])); ctx.lineTo(...X([bp[0] - nv[0] * .17, bp[1] - nv[1] * .17]));
+  ctx.strokeStyle = edge; ctx.lineWidth = .11 * sc; ctx.stroke(); ctx.strokeStyle = belt; ctx.lineWidth = .07 * sc; ctx.stroke();
+  seg(q.S, q.N, .1);
+  const hc = X(q.C), hr = LEN.head * sc;
+  ctx.fillStyle = COL.hair; ctx.beginPath(); ctx.arc(hc[0], hc[1], hr * 1.06, 0, 7); ctx.fill();
+  ctx.fillStyle = COL.skin; ctx.beginPath(); ctx.arc(hc[0] + sg * hr * .2, hc[1] + hr * .14, hr * .86, 0, 7); ctx.fill();
+  seg(q.H, lN[0], .18); seg(lN[0], lN[1], .14); seg(lN[1], lN[2], .1);
+  seg(q.S, aN[0], .12); seg(aN[0], aN[1], .1);
+  ctx.fillStyle = COL.skin; dot(ctx, X(aN[1]), .06 * sc);
+}
+function arrow(ctx, a, b, color, sc, tx) {
+  const A = tx(a), B = tx(b), dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy);
+  if (len < sc * .32) return;
+  const nx = -dy / len, ny = dx / len, off = len * .22;
+  const C = [(A[0] + B[0]) / 2 + nx * off, (A[1] + B[1]) / 2 + ny * off];
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = Math.max(2.6, sc * .06);
+  ctx.setLineDash([sc * .13, sc * .1]); ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.quadraticCurveTo(C[0], C[1], B[0], B[1]); ctx.stroke(); ctx.setLineDash([]);
+  const ang = Math.atan2(B[1] - C[1], B[0] - C[0]), hs = Math.max(9, sc * .2);
+  ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(B[0] - hs * Math.cos(ang - .45), B[1] - hs * Math.sin(ang - .45)); ctx.lineTo(B[0] - hs * Math.cos(ang + .45), B[1] - hs * Math.sin(ang + .45)); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawStory(ctx, A, tt, prev, W, H, cam, o = {}) {
+  const sc = cam.sc, tx = (p) => [W / 2 + (p[0] - cam.cx) * sc, H / 2 - (p[1] - cam.cy) * sc];
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#f4f6fb"; ctx.fillRect(0, 0, W, H);
+  if (A.top) {
+    ctx.fillStyle = "#e3e9d8"; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = "#d2dbc4"; ctx.lineWidth = 1.5;
+    const g = sc * 1.4, ox = (W / 2 - cam.cx * sc) % g, oy = (H / 2 + cam.cy * sc) % g;
+    for (let x = ox; x < W; x += g) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = oy; y < H; y += g) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  } else {
+    const gy = H / 2 + cam.cy * sc;
+    ctx.fillStyle = "#dfe6f1"; ctx.fillRect(0, gy, W, H - gy);
+    ctx.fillStyle = "#c3cde0"; ctx.fillRect(0, gy, W, Math.max(2, sc * .04));
+  }
+  const pose = (t, alpha) => {
+    const F = poseAt(A, t); ctx.globalAlpha = alpha;
+    if (A.top) { drawFigTop(ctx, F.U, "U", "#ffffff", tx, sc); drawFigTop(ctx, F.T, "T", A.belt || "#ffffff", tx, sc); }
+    else { drawFigStory(ctx, F.U, F.S.U, "U", "#ffffff", tx, sc); drawFigStory(ctx, F.T, F.S.T, "T", A.belt || "#ffffff", tx, sc); }
+    ctx.globalAlpha = 1; return F;
+  };
+  const Fp = prev != null && !o.thumb ? pose(prev, .2) : null;
+  const Fc = pose(tt, 1);
+  if (Fp) {
+    const BL = "#1f45d1", OR = "#e8930c";
+    arrow(ctx, Fp.U.H, Fc.U.H, OR, sc, tx);
+    arrow(ctx, Fp.T.H, Fc.T.H, BL, sc, tx);
+    if (!A.top) arrow(ctx, Fp.T.legs[0][2], Fc.T.legs[0][2], BL, sc, tx);
+  }
+}
+
+window.JE = { build, draw, phaseAt, COL, fitCamera, drawStory };
 })();

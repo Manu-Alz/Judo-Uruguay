@@ -34,34 +34,33 @@ function animOf(t) {
 }
 const peakTime = (A) => { const k = [...A.kf].reverse().find((f) => /^(Kake|Osaekomi|Shime|Kansetsu|Control|Ippon)$/.test(f.n)); const kk = A.kf.find((f) => f.n === "Kake") || k || A.kf[A.kf.length - 1]; return kk.t; };
 
-class Player {
-  constructor(canvas, A, o = {}) {
-    this.c = canvas; this.A = A; this.ctx = canvas.getContext("2d"); this.o = o;
-    this.t = 0; this.playing = o.autoplay !== false; this.speed = 1; this.alive = true; this.last = performance.now();
-    this.total = A.dur + A.hold;
-    this.resize = this.resize.bind(this); this.loop = this.loop.bind(this);
-    window.addEventListener("resize", this.resize); this.resize();
-    this.raf = requestAnimationFrame(this.loop);
-  }
-  resize() {
-    const r = this.c.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    this.W = r.width || 300; this.H = r.height || 270;
-    this.c.width = Math.round(this.W * dpr); this.c.height = Math.round(this.H * dpr);
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.render();
-  }
-  render() { JE.draw(this.ctx, this.A, Math.min(this.t, this.A.dur), this.W, this.H); }
-  loop(now) {
-    if (!this.alive) return;
-    const dt = Math.min((now - this.last) / 1000, .1); this.last = now;
-    if (this.playing) { this.t += dt * this.speed; if (this.t >= this.total) this.t = 0; }
-    this.render(); this.o.onTick?.(this.t);
-    this.raf = requestAnimationFrame(this.loop);
-  }
-  seek(t) { this.t = Math.min(Math.max(t, 0), this.A.dur); this.render(); this.o.onTick?.(this.t); }
-  destroy() { this.alive = false; cancelAnimationFrame(this.raf); window.removeEventListener("resize", this.resize); }
+/* ---------- Storyboard ---------- */
+const STEP_TXT = {
+  "Agarre": "Posición inicial. Tomá la manga y la solapa de uke.",
+  "Kuzushi": "Rompé el equilibrio de uke: que cargue el peso en una sola pierna.",
+  "Tsukuri": "Entrá con el cuerpo y colocate en la posición de ataque.",
+  "Kake": "Ejecutá la técnica con todo el cuerpo, sin soltar el agarre.",
+  "Ippon": "Uke cae con fuerza y de espaldas. Mantené el control.",
+  "Ataca el uke": "Uke intenta atacar primero.",
+  "Esquiva": "Tori esquiva y se prepara para contraatacar.",
+  "Posición": "Uke acostado. Tori se ubica a su lado.",
+  "Entrada": "Tori se acomoda y toma los agarres.",
+  "Osaekomi": "Mantené la inmovilización: 10 s es waza-ari, 20 s es ippon.",
+  "Shime": "Aplicá la estrangulación con control.",
+  "Kansetsu": "Aplicá la luxación sobre el codo, despacio y con control.",
+  "Tap": "Uke golpea dos veces para rendirse: soltá enseguida.",
+};
+const stepsOf = (A) => A.kf.filter((f) => f.n);
+function paintPanel(c, A, i) {
+  const steps = stepsOf(A), r = c.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const W = r.width || 320, H = r.height || 240;
+  c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const tt = steps[i].t, pv = i ? steps[i - 1].t : null;
+  JE.drawStory(ctx, A, tt, pv, W, H, JE.fitCamera(A, pv == null ? [tt] : [pv, tt], W, H, .5));
 }
 let players = [];
-const killPlayers = () => { players.forEach((p) => p.destroy()); players = []; };
+const killPlayers = () => {};
 
 /* Miniaturas del momento clave (se dibujan al aparecer en pantalla) */
 const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => {
@@ -70,10 +69,10 @@ const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => {
 function drawThumb(c) {
   const t = BY_SLUG[c.dataset.slug], A = t && animOf(t); if (!A) return;
   const r = c.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-  const W = r.width || 92, H = r.height || 70;
+  const W = r.width || 92, H = r.height || 70, pk = peakTime(A);
   c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
   const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  JE.draw(ctx, A, peakTime(A), W, H);
+  JE.drawStory(ctx, A, pk, null, W, H, JE.fitCamera(A, [pk], W, H, .22), { thumb: true });
 }
 const hydrate = (root) => root.querySelectorAll("canvas[data-slug]").forEach((c) => (io ? io.observe(c) : drawThumb(c)));
 
@@ -117,9 +116,9 @@ function vInicio() {
     <p class="k">Técnica del día</p>
     <h2>${tech.name}</h2>
     <p>${esc(tech.es)}</p>
-    <div class="row"><span class="chip"><i class="belt-sw" style="--c:${b.color}"></i>Cinturón ${b.name.toLowerCase()}</span><span class="chip">${esc(tech.groupEs)}</span></div>
+    <div class="chips2"><span class="chip"><i class="belt-sw" style="--c:${b.color}"></i>Cinturón ${b.name.toLowerCase()}</span><span class="chip">${esc(tech.groupEs)}</span></div>
     <div class="stage" id="hero-stage" data-act="open" data-slug="${tech.slug}" role="button" tabindex="0" aria-label="Abrir ${tech.name}"><canvas id="hero-c"></canvas></div>
-    <a class="btn white" href="#/t/${tech.slug}">Ver paso a paso</a>
+    <a class="btn white" href="#/t/${tech.slug}">Ver la secuencia completa</a>
   </section>
   <div class="sec"><h2>Tu camino</h2><a href="#/progreso">${total} / 100</a></div>
   <div class="rail">${BELTS.map((bl) => { const l = techsOfBelt(bl.id), m = mastered(l);
@@ -129,15 +128,16 @@ function vInicio() {
   <figure class="quote" style="margin:0"><blockquote>${esc(q[0])}</blockquote><cite>${esc(q[1])}</cite></figure>
   <div class="sec"><h2>Explorar</h2></div>
   <div class="tiles">
-    <a class="tile" href="#/tecnicas"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="3"/><path d="M10 8.2l4 1.8-4 1.8zM8 20h8"/></svg><div><b>Técnicas</b><span>100 animadas</span></div></a>
+    <a class="tile" href="#/tecnicas"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="3"/><path d="M10 8.2l4 1.8-4 1.8zM8 20h8"/></svg><div><b>Técnicas</b><span>100 secuencias</span></div></a>
     <a class="tile" href="#/progreso"><svg viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/></svg><div><b>Progreso</b><span>Por cinturón</span></div></a>
     <a class="tile" href="#/dojo"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M16 5.2a3 3 0 010 5.6M18 14.4c1.8.8 3 2.8 3 5.6"/></svg><div><b>Dojo</b><span>El grupo</span></div></a>
     <a class="tile" href="#/mas"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg><div><b>Glosario</b><span>Términos y reglas</span></div></a>
   </div>`;
 }
 function afterInicio() {
-  const A = animOf(dailyTech()), c = $("#hero-c");
-  if (A && c) players.push(new Player(c, A));
+  const A = animOf(dailyTech()), c = $("#hero-c"); if (!A || !c) return;
+  const steps = stepsOf(A); let k = steps.findIndex((f) => f.n === "Kake"); if (k < 0) k = steps.length - 1;
+  requestAnimationFrame(() => paintPanel(c, A, k));
 }
 
 function filtered() {
@@ -180,58 +180,43 @@ function vTecnicas() {
   <div id="list">${listHtml()}</div>`;
 }
 
-let detailSlug = null, detailPlayer = null;
 function vDetalle(slug) {
   const t = BY_SLUG[slug]; if (!t) return vTecnicas();
-  const A = animOf(t), b = beltOf(t.belt), s = st(slug);
+  const A = animOf(t), b = beltOf(t.belt), s = st(slug), steps = stepsOf(A);
   const list = filtered().length ? filtered() : TECHS;
   const i = Math.max(0, list.findIndex((x) => x.slug === slug));
   const prev = list[(i - 1 + list.length) % list.length], next = list[(i + 1) % list.length];
-  const phases = A.kf.filter((f) => f.n);
+  const risky = /Shime|Kansetsu/.test(t.group);
   return `
   <button class="back" data-act="back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Técnicas</button>
-  <div class="card" style="padding:12px">
-    <div class="stage" id="stage"><canvas id="pc"></canvas><span class="badge" id="badge">${esc(phases[0]?.n || "")}</span><span class="view-tag">${viewName(A)}</span></div>
-    <div class="controls" id="ctl">
-      <button class="pbtn" id="pp" aria-label="Pausar">${PAUSE}</button>
-      <input class="scrub" id="scrub" type="range" min="0" max="${A.dur}" step="0.01" value="0" aria-label="Línea de tiempo">
-      <button class="spd" id="spd" aria-label="Velocidad">1×</button>
-    </div>
-    <div class="phases" id="phases">${phases.map((f) => `<button class="ph" data-t="${f.t}" aria-pressed="false">${esc(f.n)}</button>`).join("")}</div>
-  </div>
-  <p class="note">Animación esquemática para entender la secuencia. Los detalles finos (agarres, ángulos, ritmo) se practican con el sensei.</p>
-  <div style="margin-top:22px">
-    <p class="sub num" style="font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Técnica ${String(TECHS.indexOf(t) + 1).padStart(2, "0")} de 100</p>
-    <h1 class="dtitle">${t.name}</h1>
-    <p class="dsub">${esc(t.es)}</p>
-    <div class="tags"><span class="tag"><i class="belt-sw" style="--c:${b.color}"></i>Cinturón ${b.name.toLowerCase()}</span><span class="tag">${t.family === "Nage-waza" ? "Proyección" : "Suelo"} · ${esc(t.groupEs)}</span>${t.origin ? `<span class="tag">${t.origin}</span>` : ""}${t.forbidden ? `<span class="tag red">Prohibida en competencia</span>` : ""}</div>
-    ${DESC[slug] ? `<p class="desc">${esc(DESC[slug])}</p>` : ""}
-    <div class="seg" role="group" aria-label="Mi estado">${["Sin empezar", "En práctica", "Dominada"].map((l, v) => `<button data-act="set" data-slug="${slug}" data-v="${v}" aria-pressed="${s === v}">${l}</button>`).join("")}</div>
-    <div class="nav2"><button data-act="goto" data-slug="${prev.slug}"><small>Anterior</small><b>${esc(prev.name)}</b></button><button data-act="goto" data-slug="${next.slug}"><small>Siguiente</small><b>${esc(next.name)}</b></button></div>
-  </div>`;
+  <p class="sub num" style="font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Técnica ${String(TECHS.indexOf(t) + 1).padStart(2, "0")} de 100</p>
+  <h1 class="dtitle">${t.name}</h1>
+  <p class="dsub">${esc(t.es)}</p>
+  <div class="tags"><span class="tag"><i class="belt-sw" style="--c:${b.color}"></i>Cinturón ${b.name.toLowerCase()}</span><span class="tag">${t.family === "Nage-waza" ? "Proyección" : "Suelo"} · ${esc(t.groupEs)}</span>${t.origin ? `<span class="tag">${t.origin}</span>` : ""}${t.forbidden ? `<span class="tag red">Prohibida en competencia</span>` : ""}</div>
+  <div class="sec" style="margin-top:22px"><h2>Secuencia</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${A.top ? "Vista desde arriba" : "Vista lateral"}</span></div>
+  <div class="story" id="story">${steps.map((st_, n) => `<figure class="panel"><canvas></canvas><figcaption><span class="stepn num">${n + 1}</span><div><b>${esc(st_.n)}</b><p>${esc(STEP_TXT[st_.n] || "")}</p></div></figcaption></figure>`).join("")}</div>
+  <div class="dots" id="dots"></div>
+  <div class="legend2"><span><i style="background:#2c58e0"></i>Tori (azul)</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1.5px #2a3350"></i>Uke (blanco)</span><span><i class="ar" style="background:#e8930c"></i>Movimiento</span></div>
+  ${DESC[slug] ? `<p class="desc">${esc(DESC[slug])}</p>` : ""}
+  <div class="seg" role="group" aria-label="Mi estado">${["Sin empezar", "En práctica", "Dominada"].map((l, v) => `<button data-act="set" data-slug="${slug}" data-v="${v}" aria-pressed="${s === v}">${l}</button>`).join("")}</div>
+  <p class="note">Esquema para entender la secuencia general. Los detalles finos (agarres, ángulos, ritmo) se practican con el sensei.${risky ? " Las estrangulaciones y luxaciones se practican siempre con supervisión." : ""}</p>
+  <div class="nav2"><button data-act="goto" data-slug="${prev.slug}"><small>Anterior</small><b>${esc(prev.name)}</b></button><button data-act="goto" data-slug="${next.slug}"><small>Siguiente</small><b>${esc(next.name)}</b></button></div>`;
 }
 function afterDetalle(slug) {
   const t = BY_SLUG[slug]; if (!t) return;
-  const A = animOf(t), c = $("#pc"); if (!A || !c) return;
-  const pp = $("#pp"), scrub = $("#scrub"), spd = $("#spd"), badge = $("#badge");
-  const btns = [...document.querySelectorAll(".ph")];
-  let lastIdx = -1;
-  const p = new Player(c, A, { onTick(tt) {
-    const k = Math.min(tt, A.dur); scrub.value = k;
-    let idx = -1; A.kf.forEach((f, i) => { if (f.n && k >= f.t - 1e-6) idx = i; });
-    if (idx !== lastIdx) { lastIdx = idx; badge.textContent = idx >= 0 ? A.kf[idx].n : ""; btns.forEach((b) => b.setAttribute("aria-pressed", String(idx >= 0 && +b.dataset.t === A.kf[idx].t))); }
-  } });
-  players.push(p); detailPlayer = p;
-  const setIcon = () => { pp.innerHTML = p.playing ? PAUSE : PLAY; pp.setAttribute("aria-label", p.playing ? "Pausar" : "Reproducir"); };
-  pp.onclick = () => { if (!p.playing && p.t >= A.dur) p.t = 0; p.playing = !p.playing; setIcon(); };
-  $("#stage").onclick = pp.onclick;
-  scrub.oninput = () => { p.playing = false; setIcon(); p.seek(+scrub.value); };
-  const speeds = [1, .5, .25]; let si = 0;
-  spd.onclick = () => { si = (si + 1) % speeds.length; p.speed = speeds[si]; spd.textContent = speeds[si] === 1 ? "1×" : speeds[si] + "×"; };
-  btns.forEach((b) => (b.onclick = () => { p.playing = false; setIcon(); p.seek(+b.dataset.t); }));
-  /* si existe un GIF propio en media/waza/, reemplaza la animación */
+  const A = animOf(t), story = $("#story"), dots = $("#dots"); if (!A || !story) return;
+  const paint = () => [...story.querySelectorAll(".panel:not(.gif) canvas")].forEach((c, n) => paintPanel(c, A, n));
+  const buildDots = () => {
+    const ps = [...story.querySelectorAll(".panel")];
+    dots.innerHTML = ps.map((p, n) => `<button class="dot" data-i="${n}" aria-label="Paso ${n + 1}"></button>`).join("");
+    dots.onclick = (e) => { const d = e.target.closest(".dot"); if (!d) return; const p = ps[+d.dataset.i]; story.scrollTo({ left: p.offsetLeft - story.offsetLeft - (story.clientWidth - p.offsetWidth) / 2, behavior: "smooth" }); };
+    const mark = () => { const mid = story.scrollLeft + story.clientWidth / 2; let best = 0, bd = 1e9; ps.forEach((p, n) => { const d = Math.abs(p.offsetLeft - story.offsetLeft + p.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = n; } }); dots.querySelectorAll(".dot").forEach((d, n) => d.setAttribute("aria-current", String(n === best))); };
+    story.onscroll = mark; mark();
+  };
+  requestAnimationFrame(() => { paint(); buildDots(); });
+  /* si existe un GIF propio en media/waza/, se agrega como primer paso */
   const img = new Image();
-  img.onload = () => { p.destroy(); $("#stage").innerHTML = ""; $("#stage").appendChild(img); img.alt = "Animación de " + t.name; $("#ctl").hidden = true; $("#phases").hidden = true; };
+  img.onload = () => { const f = document.createElement("figure"); f.className = "panel gif"; f.innerHTML = `<div class="gifbox"></div><figcaption><span class="stepn">★</span><div><b>Video del dojo</b><p>Grabado por el grupo.</p></div></figcaption>`; $(".gifbox", f).appendChild(img); img.alt = "Animación de " + t.name; story.prepend(f); buildDots(); story.scrollLeft = 0; };
   img.src = `media/waza/${slug}.gif`;
 }
 
@@ -305,7 +290,7 @@ function route(isNav) {
   document.body.classList.toggle("detail", h[0] === "t");
   const meEl = $("#me"); meEl.textContent = (S.name.trim()[0] || "?").toUpperCase();
   if (h[0] === "t" && h[1] && BY_SLUG[h[1]]) {
-    current = "t"; detailSlug = h[1];
+    current = "t";
     view.innerHTML = vDetalle(h[1]); window.scrollTo(0, 0); afterDetalle(h[1]); return;
   }
   const name = VIEWS[h[0]] ? h[0] : "inicio";
