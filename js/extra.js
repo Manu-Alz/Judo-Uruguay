@@ -110,7 +110,7 @@ const WAZA_ES = {
    Ejemplo: "o-goshi": "dQw4w9WgXcQ"
    Si no hay video, la técnica muestra el GIF de media/waza/<slug>.gif (si existe)
    y un botón para buscarla en YouTube. */
-const VIDEOS = {};
+const VIDEOS = {}; /* ya no se usa: las técnicas se muestran con animación propia */
 
 /* Alumnos del grupo (los carga el sensei).
    belt: blanco | amarillo | naranja | verde | azul | marron | negro
@@ -128,7 +128,6 @@ const LINKS = [
   { t: "Judokan Uruguay", d: "Asociación de Artes Marciales Judokan · Montevideo", u: "https://manu-alz.github.io/Judokan/" },
   { t: "Kodokan (oficial)", d: "Instituto fundado por Jigoro Kano", u: "https://kodokan.org/" },
   { t: "IJF · Federación Internacional", d: "Resultados, reglas y rankings", u: "https://www.ijf.org/" },
-  { t: "Canal de YouTube del Kodokan", d: "Videos oficiales de técnicas", u: "https://www.youtube.com/results?search_query=Kodokan+Judo+Institute" },
 ];
 
 /* Categorías de peso olímpicas */

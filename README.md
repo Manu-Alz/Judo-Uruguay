@@ -1,30 +1,28 @@
 # Judo Uruguay
 
-App del grupo de judo: las 100 técnicas del Kodokan por cinturón, progreso personal y el dojo. Pensada primero para el teléfono (se puede instalar en la pantalla de inicio) y también funciona en PC. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
+App del grupo de judo: las 100 técnicas del Kodokan por cinturón, **cada una animada**, progreso personal y el dojo. Pensada primero para el teléfono (se instala en la pantalla de inicio) y también funciona en PC. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
 
 ## Secciones
-- **Inicio**: avance general, frase del día, las próximas técnicas para tu cinturón.
-- **Técnicas**: las 100, filtros por cinturón / proyección o suelo / estado, buscador. Tocás una para ver el detalle (GIF o video, significado, grupo, origen) y marcarla: sin empezar, aprendiendo o dominada.
+- **Inicio**: técnica del día en movimiento, tu camino por cinturón, frase del día.
+- **Técnicas**: las 100 con miniatura del momento clave, filtros por cinturón / proyección o suelo / estado, y buscador.
+- **Detalle**: animación en loop con play/pausa, cámara lenta (1×, 0.5×, 0.25×), línea de tiempo y botones por fase (Agarre, Kuzushi, Tsukuri, Kake, Ippon). Se marca como sin empezar, en práctica o dominada.
 - **Progreso**: porcentaje por cinturón, tu ficha, respaldo.
-- **Dojo**: el grupo por cinturón, sin ranking.
+- **Dojo**: el grupo en orden alfabético, sin ranking.
 - **Más**: glosario, reglas, categorías de peso, links.
 
-## Archivos
-- `js/data.js`: técnicas, cinturones y frases (el mismo de Manu-HQ).
-- `js/extra.js`: **lo que se edita**: significados, videos, alumnos, links.
-- `js/app.js`, `css/styles.css`, `index.html`: la app.
-- `media/waza/`: los GIFs.
-- `sw.js`: lo hace funcionar sin señal. Subí `VERSION` al publicar cambios grandes.
+## Las animaciones
+Son propias, generadas por código (`js/engine.js`): dos muñecos, tori (azul) y uke (blanco). Las 68 proyecciones se ven de costado y las 32 técnicas de suelo desde arriba.
 
-## Cómo agregar GIFs / videos
-1. **GIF**: guardalo como `media/waza/<nombre-en-minúsculas>.gif` (ej. `media/waza/o-goshi.gif`). Aparece solo.
-2. **Video de YouTube**: en `js/extra.js`, `VIDEOS = { "o-goshi": "ID_DEL_VIDEO" }`.
-3. Sin ninguno de los dos, la técnica ofrece un botón que busca en YouTube.
+- `js/nage.js`: plantillas de proyección (con giro, siega, barrido, sacrificio, tackle, contraataque) y la tabla que asigna cada técnica a su plantilla.
+- `js/katame.js`: poses finales de inmovilizaciones, estrangulaciones y luxaciones.
 
-Usá material propio del grupo o con permiso; no copies GIFs de terceros.
+Son **esquemáticas**: muestran la secuencia general, no el detalle fino de cada agarre. Varias técnicas parecidas comparten plantilla. Para afinar una, se edita su entrada en `nage.js` / `katame.js`.
 
-## Cómo cargar alumnos
-Cada alumno toca **Progreso → Copiar mi ficha** y te manda el texto. Lo pegás en `ALUMNOS` de `js/extra.js` y publicás. Hoy el progreso de cada uno vive en su teléfono (localStorage); el Dojo muestra lo que cargues vos.
+### Reemplazar por un GIF real
+Si un GIF propio existe en `media/waza/<nombre-en-minúsculas>.gif` (ej. `media/waza/o-goshi.gif`), la app lo muestra en lugar de la animación. Usá material del grupo o con permiso.
+
+## Alumnos
+Cada uno toca **Progreso → Copiar mi ficha** y te manda el texto. Se pega en `ALUMNOS` de `js/extra.js`. El progreso personal vive en el teléfono de cada uno (localStorage).
 
 ## Publicar
-Subir la carpeta a un repo de GitHub y activar Pages (rama `main`, carpeta raíz).
+Repo en GitHub, Settings → Pages → rama `main`, carpeta raíz.
