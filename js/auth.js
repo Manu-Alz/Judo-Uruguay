@@ -29,7 +29,9 @@ const Auth = (() => {
       emit();
     },
     async signUp(email, password, name) {
-      const { data, error } = await client.auth.signUp({ email, password, options: { data: { name } } });
+      /* el link del mail vuelve a esta misma página (debe estar en "Redirect URLs" de Supabase) */
+      const back = location.origin + location.pathname;
+      const { data, error } = await client.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: back } });
       if (error) throw nice(error);
       return { needsConfirm: !data.session };
     },

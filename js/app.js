@@ -396,6 +396,12 @@ document.addEventListener("input", (e) => {
 });
 async function copy(text, msg) { try { await navigator.clipboard.writeText(text); toast(msg); } catch { prompt("Copiá este texto:", text); } }
 
+/* Si el link del mail venció o es inválido, Supabase vuelve con #error=...: avisar y llevar a Ingresar */
+if (/[#&]error_code=/.test(location.hash)) {
+  const expired = /otp_expired/.test(location.hash);
+  history.replaceState(null, "", location.pathname + "#/cuenta");
+  authErr = expired ? "El link del mail venció o ya se usó. Ingresá con tu email y contraseña; si no podés, creá la cuenta de nuevo." : "No se pudo confirmar el mail. Probá ingresar de nuevo.";
+}
 Auth.onChange(async (u) => { if (u) { await syncDown(); loadProfiles(); } else PROFILES = null; route(false); });
 window.addEventListener("hashchange", () => route(true));
 route(false);
