@@ -65,7 +65,14 @@ function speak(text) {
 }
 
 /* ---------- Cuenta y sincronización ---------- */
-let PROFILES = null, syncTimer = null, isSensei = false;
+let PROFILES = null, ANN = null, ATT = null, syncTimer = null, isSensei = false, beltLocked = false, lastSig = "";
+const todayUY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Montevideo" }).format(new Date());
+const monthStart = () => todayUY().slice(0, 8) + "01";
+const attOf = (uid) => (ATT || []).filter((a) => a.user_id === uid);
+const monthCount = (uid) => attOf(uid).filter((a) => a.day >= monthStart()).length;
+const presentToday = (uid) => attOf(uid).some((a) => a.day === todayUY());
+const fechaCorta = (iso) => new Date(iso).toLocaleDateString("es-UY", { weekday: "short", day: "numeric", month: "short", timeZone: "America/Montevideo" });
+
 function schedulePush() { if (!Auth.user) return; clearTimeout(syncTimer); syncTimer = setTimeout(pushNow, 1200); }
 async function pushNow() {
   if (!Auth.user) return;
@@ -76,6 +83,7 @@ async function syncDown() {
   try {
     const p = await Auth.getProfile();
     isSensei = !!(p && p.is_sensei);
+    beltLocked = !!(p && p.belt_by_sensei);
     if (p) {
       if (p.name) S.name = p.name;
       /* la nube manda si ya tiene progreso; si está vacía (cuenta recién creada), se queda lo de este dispositivo */
@@ -85,14 +93,29 @@ async function syncDown() {
         for (const s of p.learning || []) if (BY_SLUG[s] && !S.prog[s]) S.prog[s] = 1;
         if (p.belt) S.belt = p.belt;
       } else if (p.belt && p.belt !== "blanco") S.belt = p.belt;
+      if (p.belt_by_sensei) S.belt = p.belt;
     } else if (!S.name) S.name = Auth.user.user_metadata?.name || "";
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
     await pushNow();
   } catch { toast("No pude sincronizar tu progreso"); }
 }
+/* Trae perfiles, avisos y asistencia. Solo vuelve a dibujar si algo cambió (y sin pisar un aviso a medio escribir) */
 async function loadProfiles() {
   if (!Auth.user) return;
-  try { PROFILES = await Auth.listProfiles(); if (current === "dojo" || current === "dojo-p") { const y = window.scrollY; route(false); window.scrollTo(0, y); } } catch {}
+  try {
+    const [pr, an, at] = await Promise.all([Auth.listProfiles(), Auth.listAnnouncements(), Auth.listAttendance(monthStart())]);
+    PROFILES = pr; ANN = an; ATT = at;
+    const me = pr.find((p) => p.id === Auth.user.id);
+    if (me) {
+      isSensei = !!me.is_sensei; beltLocked = !!me.belt_by_sensei;
+      if (me.belt_by_sensei && me.belt !== S.belt) { S.belt = me.belt; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
+    }
+    const sig = JSON.stringify([pr, an, at, isSensei, beltLocked]);
+    if (sig === lastSig) return;
+    lastSig = sig;
+    const typing = $("#aviso-text") && $("#aviso-text").value;
+    if (["inicio", "dojo", "dojo-p", "progreso"].includes(current) && !typing) { const y = window.scrollY; route(false); window.scrollTo(0, y); }
+  } catch {}
 }
 function renderChrome() {
   const u = Auth.user, initial = (S.name.trim()[0] || u?.email?.[0] || "?").toUpperCase();
@@ -102,6 +125,22 @@ function renderChrome() {
     ? `<a class="sidecard" href="#/cuenta"><i class="me" style="font-style:normal">→</i><div><b>Ingresar</b><span>Sumate al dojo</span></div></a>`
     : `<a class="sidecard" href="#/progreso"><i class="me" style="font-style:normal">${esc(initial)}</i><div><b>${esc(S.name || "Invitado")}</b><span>${isSensei ? "Sensei" : "Cinturón " + beltOf(S.belt).name.toLowerCase()}</span></div></a>`;
 }
+
+/* Inicio: asistencia y avisos */
+function checkinCard() {
+  if (!Auth.user) return "";
+  const uid = Auth.user.id, on = presentToday(uid), n = monthCount(uid);
+  return `<div class="card checkin${on ? " on" : ""}"><div><b>${on ? "Asistencia anotada hoy ✓" : "¿Viniste a clase hoy?"}</b><span>${ATT ? clases(n) : "…"}</span></div>${on ? `<button class="btn ghost sm" data-act="uncheck">Deshacer</button>` : `<button class="btn blue sm" data-act="checkin">Estuve en clase</button>`}</div>`;
+}
+function avisosBlock() {
+  if (!Auth.user) return "";
+  const list = ANN || [];
+  if (!list.length && !isSensei) return "";
+  return `<div class="sec"><h2>Avisos</h2></div>
+  ${isSensei ? `<div class="card compose"><textarea id="aviso-text" maxlength="400" rows="2" placeholder="Escribí un aviso para todo el dojo…"></textarea><div class="compose-foot"><small class="sub num" id="aviso-n">0 / 400</small><button class="btn blue sm" data-act="publicar">Publicar</button></div></div>` : ""}
+  ${list.map((a) => `<div class="card aviso"><p>${esc(a.body)}</p><div class="meta"><small>${fechaCorta(a.created_at)}</small>${isSensei ? `<button class="del" data-act="del-aviso" data-id="${a.id}">Borrar</button>` : ""}</div></div>`).join("")}`;
+}
+
 
 /* ---------- Vistas ---------- */
 let F = { q: "", belt: "todos" };
@@ -113,6 +152,8 @@ function vInicio() {
   <div class="home">
     <div>
       <div class="hello"><p class="sub" style="font-weight:700">${first ? "Buenas," : "Bienvenido al"}</p><h1 class="h1">${first ? esc(first) : "dojo"} 👋</h1></div>
+      ${avisosBlock()}
+      ${checkinCard()}
       <section class="hero" aria-label="Técnica del día">
         <p class="k">Técnica del día</p>
         <h2>${tech.name}</h2>
@@ -231,7 +272,7 @@ function vProgreso() {
       ${accountCard()}
       <div class="card">
         <label class="field"><span>Nombre</span><input id="f-name" value="${esc(S.name)}" placeholder="Tu nombre" autocomplete="given-name" maxlength="40"></label>
-        <label class="field"><span>Cinturón actual</span><select id="f-belt">${LEVELS.map((b) => `<option value="${b.id}"${b.id === S.belt ? " selected" : ""}>${b.name}</option>`).join("")}</select></label>
+        <label class="field"><span>Cinturón actual</span><select id="f-belt"${beltLocked ? " disabled" : ""}>${LEVELS.map((b) => `<option value="${b.id}"${b.id === S.belt ? " selected" : ""}>${b.name}</option>`).join("")}</select>${beltLocked ? `<small class="sub" style="display:block;margin-top:6px;font-weight:600">Tu sensei fijó tu cinturón.</small>` : ""}</label>
         ${Auth.enabled ? "" : `<button class="btn blue" style="width:100%" data-act="copy-ficha">Copiar mi ficha para el sensei</button>`}
       </div>
       <div class="sec"><h2>Respaldo</h2></div>
@@ -241,26 +282,40 @@ function vProgreso() {
   </div>`;
 }
 
-/* Cuenta: ingresar / crear */
+/* Cuenta: ingresar / crear / recuperar contraseña */
 let authMode = "in", authErr = "", authOk = "", authBusy = false;
 function vCuenta() {
   if (!Auth.enabled) return `<h1 class="h1">Cuenta</h1><p class="lead">El inicio de sesión todavía no está conectado.</p><div class="notice">Cuando se conecte, vas a poder guardar tu progreso y aparecer en el dojo.</div>`;
   const u = Auth.user;
   if (u) return `<h1 class="h1">Cuenta</h1><p class="lead">Ya tenés la sesión iniciada.</p><div class="authbox">${accountCard()}</div>`;
-  const up = authMode === "up";
+  const up = authMode === "up", rs = authMode === "reset";
   return `
-  <h1 class="h1">${up ? "Crear cuenta" : "Ingresar"}</h1>
-  <p class="lead">${up ? "Sumate al dojo y guardá tu progreso." : "Entrá para ver a los demás y sincronizar tu progreso."}</p>
+  <h1 class="h1">${rs ? "Recuperar contraseña" : up ? "Crear cuenta" : "Ingresar"}</h1>
+  <p class="lead">${rs ? "Te mandamos un link al email para elegir una contraseña nueva." : up ? "Sumate al dojo y guardá tu progreso." : "Entrá para ver a los demás y sincronizar tu progreso."}</p>
   <div class="card authbox">
-    <div class="tabs2"><button data-act="authmode" data-m="in" aria-pressed="${!up}">Ingresar</button><button data-act="authmode" data-m="up" aria-pressed="${up}">Crear cuenta</button></div>
+    ${rs ? "" : `<div class="tabs2"><button data-act="authmode" data-m="in" aria-pressed="${!up}">Ingresar</button><button data-act="authmode" data-m="up" aria-pressed="${up}">Crear cuenta</button></div>`}
     <form id="authform" novalidate>
       ${up ? `<label class="field"><span>Nombre</span><input name="name" autocomplete="name" maxlength="40" placeholder="Tu nombre" value="${esc(S.name)}"></label>` : ""}
-      <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" inputmode="email" placeholder="tu@email.com" required></label>
-      <label class="field"><span>Contraseña</span><input name="password" type="password" autocomplete="${up ? "new-password" : "current-password"}" placeholder="Mínimo 6 caracteres" required></label>
+      <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" inputmode="email" placeholder="tu@email.com" value="${esc(authEmail)}" required></label>
+      ${rs ? "" : `<label class="field"><span>Contraseña</span><input name="password" type="password" autocomplete="${up ? "new-password" : "current-password"}" placeholder="Mínimo 6 caracteres" required></label>`}
       ${authErr ? `<p class="err">${esc(authErr)}</p>` : ""}${authOk ? `<p class="okmsg">${esc(authOk)}</p>` : ""}
-      <button class="btn blue" style="width:100%" type="submit"${authBusy ? " disabled" : ""}>${authBusy ? "Un momento…" : up ? "Crear cuenta" : "Ingresar"}</button>
+      <button class="btn blue" style="width:100%" type="submit"${authBusy ? " disabled" : ""}>${authBusy ? "Un momento…" : rs ? "Enviar link" : up ? "Crear cuenta" : "Ingresar"}</button>
     </form>
+    ${rs ? `<button class="linkbtn" data-act="authmode" data-m="in">Volver a ingresar</button>` : up ? "" : `<button class="linkbtn" data-act="authmode" data-m="reset">Olvidé mi contraseña</button>`}
   </div>`;
+}
+/* Pantalla a la que llega el link del mail de recuperación */
+function vNuevaClave() {
+  if (!Auth.enabled || !Auth.user) return `<h1 class="h1">Nueva contraseña</h1><p class="lead">Este link ya no es válido. Pedí uno nuevo desde Ingresar.</p><a class="btn blue sm" href="#/cuenta" data-act="authmode" data-m="reset">Recuperar contraseña</a>`;
+  return `
+  <h1 class="h1">Nueva contraseña</h1>
+  <p class="lead">Elegí una contraseña nueva para tu cuenta.</p>
+  <div class="card authbox"><form id="newpassform" novalidate>
+    <label class="field"><span>Contraseña nueva</span><input name="password" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres" required></label>
+    <label class="field"><span>Repetila</span><input name="password2" type="password" autocomplete="new-password" required></label>
+    ${authErr ? `<p class="err">${esc(authErr)}</p>` : ""}
+    <button class="btn blue" style="width:100%" type="submit"${authBusy ? " disabled" : ""}>${authBusy ? "Un momento…" : "Guardar contraseña"}</button>
+  </form></div>`;
 }
 
 /* Dojo: solo quienes se registran en la app (Supabase) + el sensei */
@@ -271,9 +326,10 @@ function dojoPeople() {
   const mine = Auth.user && Auth.user.id;
   return PROFILES.filter((p) => !p.is_sensei).map((p) => {
     const me = p.id === mine;
-    return { ...p, me, name: (me ? S.name : p.name) || p.name || "Sin nombre", belt: me ? S.belt : p.belt, done: me ? slugsWith(2) : p.done || [], learning: me ? slugsWith(1) : p.learning || [] };
+    return { ...p, me, name: (me ? S.name : p.name) || p.name || "Sin nombre", belt: me ? S.belt : p.belt, done: me ? slugsWith(2) : p.done || [], learning: me ? slugsWith(1) : p.learning || [], hoy: presentToday(p.id), mes: monthCount(p.id) };
   }).sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
+const clases = (n) => `${n} clase${n === 1 ? "" : "s"} este mes`;
 function vDojo() {
   const logged = !!Auth.user, people = logged ? dojoPeople() : null;
   const extraSensei = logged && PROFILES ? PROFILES.filter((p) => p.is_sensei && norm(p.name) !== norm(SENSEI.name)).map((p) => ({ name: p.name || "Sensei" })) : [];
@@ -282,9 +338,12 @@ function vDojo() {
   else if (!logged) body = `<div class="card"><p style="font-weight:800">Mirá quién más está en la app</p><p class="sub" style="font-size:.88rem;margin:2px 0 14px">Iniciá sesión o creá tu cuenta para ver a los judokas del dojo y su progreso, y para que ellos te vean a vos.</p><a class="btn blue sm" href="#/cuenta">Ingresar o crear cuenta</a></div>`;
   else if (!people) body = `<div class="empty">Cargando el dojo…</div>`;
   else if (!people.length) body = `<div class="empty">Todavía no hay judokas registrados.</div>`;
-  else body = `<div class="sec"><h2>Judokas</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${people.length}</span></div>
+  else {
+    const hoy = people.filter((p) => p.hoy).length;
+    body = `<div class="sec"><h2>Judokas</h2><span class="hoyline"><i></i>${hoy} en el dojo hoy</span></div>
     <div class="people">${people.map((a) => { const b = beltOf(a.belt), n = countOf(a);
-      return `<a class="card person" href="#/dojo/${a.id}"><div class="avatar" style="--c:${b.color}">${esc(a.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(a.name)}</b><span>Cinturón ${b.name.toLowerCase()}${a.me ? " · vos" : ""}</span><div class="bar"><i style="width:${n}%"></i></div></div><div class="n num">${n}<small>DE 100</small></div></a>`; }).join("")}</div>`;
+      return `<a class="card person" href="#/dojo/${a.id}"><div class="avatar" style="--c:${b.color}">${esc(a.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(a.name)}${a.hoy ? `<em class="hoy">Hoy</em>` : ""}</b><span>Cinturón ${b.name.toLowerCase()}${a.belt_by_sensei ? " ✓" : ""} · ${clases(a.mes)}${a.me ? " · vos" : ""}</span><div class="bar"><i style="width:${n}%"></i></div></div><div class="n num">${n}<small>DE 100</small></div></a>`; }).join("")}</div>`;
+  }
   return `
   <h1 class="h1">Dojo</h1>
   <p class="lead">${people && people.length ? `${people.length} judoka${people.length === 1 ? "" : "s"}, en orden alfabético. ` : ""}Acá no hay ranking: se crece juntos. Tocá a alguien para ver su progreso.</p>
@@ -293,21 +352,24 @@ function vDojo() {
 }
 /* Ficha de un judoka: su progreso completo */
 function vJudoka(id) {
-  if (!Auth.user) return `<button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button><div class="card authbox"><p style="font-weight:800">Iniciá sesión para ver esta ficha</p><p class="sub" style="font-size:.88rem;margin:2px 0 14px">El progreso de cada judoka lo ven quienes tienen cuenta en el dojo.</p><a class="btn blue sm" href="#/cuenta">Ingresar o crear cuenta</a></div>`;
+  const back = `<button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button>`;
+  if (!Auth.user) return `${back}<div class="card authbox"><p style="font-weight:800">Iniciá sesión para ver esta ficha</p><p class="sub" style="font-size:.88rem;margin:2px 0 14px">El progreso de cada judoka lo ven quienes tienen cuenta en el dojo.</p><a class="btn blue sm" href="#/cuenta">Ingresar o crear cuenta</a></div>`;
   const p = (dojoPeople() || []).find((x) => x.id === id);
-  if (!p) return `<button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button><div class="empty">${PROFILES ? "No encontré a esa persona." : "Cargando…"}</div>`;
-  const b = beltOf(p.belt), dn = new Set(p.done), ln = new Set(p.learning), total = countOf(p), pc = pct(total, 100);
+  if (!p) return `${back}<div class="empty">${PROFILES ? "No encontré a esa persona." : "Cargando…"}</div>`;
+  const b = beltOf(p.belt), dn = new Set(p.done), ln = new Set(p.learning), total = countOf(p);
   const chips = (set, cls) => TECHS.filter((t) => set.has(t.slug)).map((t) => `<a class="tchip ${cls}" href="#/t/${t.slug}"><i class="belt-sw" style="--c:${beltOf(t.belt).color}"></i>${t.name}</a>`).join("");
+  const senseiBox = isSensei && !p.me ? `<div class="card" style="margin-bottom:14px"><label class="field"><span>Cinturón oficial</span><select id="sb">${LEVELS.map((l) => `<option value="${l.id}"${l.id === p.belt ? " selected" : ""}>${l.name}</option>`).join("")}</select></label><button class="btn blue sm" data-act="setbelt" data-id="${p.id}">Guardar cinturón</button><p class="note">Una vez fijado por el sensei, ${esc(p.name.split(/\s+/)[0])} no lo puede cambiar solo.</p></div>` : "";
   return `
-  <button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button>
+  ${back}
   <div class="pgrid">
     <div>
-      <div class="card ringwrap"><div class="avatar big" style="--c:${b.color}">${esc(p.name.trim()[0]?.toUpperCase() || "?")}</div><div><h2>${esc(p.name)}${p.me ? " <span class=\"sub\" style=\"font-size:.9rem\">· vos</span>" : ""}</h2><p>Cinturón ${b.name.toLowerCase()}<br><b class="num">${total} / 100</b> dominadas · ${ln.size} en práctica</p></div></div>
+      <div class="card ringwrap"><div class="avatar big" style="--c:${b.color}">${esc(p.name.trim()[0]?.toUpperCase() || "?")}</div><div><h2>${esc(p.name)}${p.me ? " <span class=\"sub\" style=\"font-size:.9rem\">· vos</span>" : ""}</h2><p>Cinturón ${b.name.toLowerCase()}${p.belt_by_sensei ? " · fijado por el sensei" : ""}<br><b class="num">${total} / 100</b> dominadas · ${ln.size} en práctica<br>${clases(p.mes)}${p.hoy ? " · hoy en el dojo" : ""}</p></div></div>
       <div class="sec"><h2>Por cinturón</h2></div>
       ${BELTS.map((bl) => { const l = techsOfBelt(bl.id), m = l.filter((t) => dn.has(t.slug)).length;
         return `<div class="card brow" style="--c:${bl.id === "negro" ? "#161a26" : COLORS[bl.id]}"><div class="h"><i class="belt-sw" style="--c:${COLORS[bl.id]};width:16px;height:16px"></i><b>${bl.name}</b><span class="num">${m} / ${l.length}</span></div><div class="bar"><i style="width:${pct(m, l.length)}%"></i></div></div>`; }).join("")}
     </div>
     <div>
+      ${senseiBox}
       <div class="sec" style="margin-top:0"><h2>Dominadas</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${total}</span></div>
       <div class="tchips">${chips(dn, "ok") || `<p class="sub">Todavía ninguna.</p>`}</div>
       <div class="sec"><h2>En práctica</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${ln.size}</span></div>
@@ -354,7 +416,7 @@ function vVocabulario() {
 }
 
 /* ---------- Router ---------- */
-const VIEWS = { inicio: vInicio, tecnicas: vTecnicas, progreso: vProgreso, dojo: vDojo, vocabulario: vVocabulario, cuenta: vCuenta };
+const VIEWS = { inicio: vInicio, tecnicas: vTecnicas, progreso: vProgreso, dojo: vDojo, vocabulario: vVocabulario, cuenta: vCuenta, "nueva-clave": vNuevaClave };
 let current = "", navCount = 0, lastKey = "";
 const SCROLLS = {};                       /* posición de scroll recordada por pantalla */
 const setTab = (name) => document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => { if (a.dataset.tab === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
@@ -380,7 +442,7 @@ function route(isNav) {
     /* volviendo desde una técnica o ficha: reponer el scroll donde estaba la lista */
     restore = (prev === "t" || prev === "dojo-p") && SCROLLS[key] != null;
     window.scrollTo(0, same ? y : restore ? SCROLLS[key] : 0);
-    if (kind === "dojo" && !same) loadProfiles();
+    if ((kind === "dojo" || kind === "inicio") && !same && Auth.user) loadProfiles();
   }
   lastKey = key;
 }
@@ -404,6 +466,20 @@ document.addEventListener("click", (e) => {
       document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.v === +el.dataset.v)));
       if (+el.dataset.v === 2) toast("Técnica dominada 🥋"); break;
     case "authmode": authMode = el.dataset.m; authErr = authOk = ""; route(false); break;
+    case "checkin": Auth.checkIn()
+      .then(() => { (ATT = ATT || []).push({ user_id: Auth.user.id, day: todayUY() }); lastSig = ""; toast("Asistencia anotada 🥋"); route(false); })
+      .catch((err) => toast(err.message)); break;
+    case "uncheck": Auth.undoCheckIn(todayUY())
+      .then(() => { ATT = (ATT || []).filter((a) => !(a.user_id === Auth.user.id && a.day === todayUY())); lastSig = ""; route(false); })
+      .catch((err) => toast(err.message)); break;
+    case "publicar": { const ta = $("#aviso-text"), body = (ta.value || "").trim(); if (!body) return toast("Escribí el aviso primero");
+      ta.value = "";                      /* se vacía ya: así el redibujado no lo considera "a medio escribir" */
+      Auth.addAnnouncement(body).then(() => { lastSig = ""; return loadProfiles(); }).then(() => toast("Aviso publicado"))
+        .catch((err) => { const t2 = $("#aviso-text"); if (t2 && !t2.value) t2.value = body; toast(err.message); }); break; }
+    case "del-aviso": if (confirm("¿Borrar este aviso?")) Auth.deleteAnnouncement(el.dataset.id)
+      .then(() => { ANN = (ANN || []).filter((a) => a.id !== el.dataset.id); lastSig = ""; route(false); toast("Aviso borrado"); }).catch((err) => toast(err.message)); break;
+    case "setbelt": Auth.setBelt(el.dataset.id, $("#sb").value)
+      .then(() => { lastSig = ""; return loadProfiles(); }).then(() => toast("Cinturón guardado")).catch((err) => toast(err.message)); break;
     case "logout": Auth.signOut().then(() => { PROFILES = null; toast("Sesión cerrada"); location.hash = "#/inicio"; }); break;
     case "copy-ficha": copy(`{ name: ${JSON.stringify(S.name || "Nombre")}, belt: "${S.belt}", dominadas: ${JSON.stringify(slugsWith(2))} },`, "Ficha copiada. Mandásela al sensei"); break;
     case "export": copy(JSON.stringify(S), "Respaldo copiado"); break;
@@ -412,23 +488,37 @@ document.addEventListener("click", (e) => {
     case "reset": if (confirm("¿Borrar todo tu progreso en este dispositivo?")) { S = { name: "", belt: "blanco", prog: {} }; save(); route(false); toast("Listo, empezás de cero"); } break;
   }
 });
+let authEmail = "";
 document.addEventListener("submit", async (e) => {
-  if (e.target.id !== "authform") return;
-  e.preventDefault();
-  const f = new FormData(e.target), email = (f.get("email") || "").trim(), pw = f.get("password") || "", name = (f.get("name") || "").trim();
-  authErr = authOk = "";
-  if (!email || !pw) { authErr = "Completá el email y la contraseña."; return route(false); }
-  authBusy = true; route(false);
-  try {
-    if (authMode === "up") {
-      if (name) { S.name = name; save(); }
-      const r = await Auth.signUp(email, pw, name);
-      if (r.needsConfirm) { authOk = "Cuenta creada. Revisá tu correo para confirmarla y después ingresá."; authMode = "in"; }
-      else toast("¡Bienvenido al dojo!");
-    } else await Auth.signIn(email, pw);
-    if (Auth.user) location.hash = "#/dojo";
-  } catch (err) { authErr = err.message; }
-  authBusy = false; route(false);
+  const id = e.target.id;
+  if (id === "authform") {
+    e.preventDefault();
+    const f = new FormData(e.target), email = (f.get("email") || "").trim(), pw = f.get("password") || "", name = (f.get("name") || "").trim();
+    authEmail = email; authErr = authOk = "";
+    if (!email || (authMode !== "reset" && !pw)) { authErr = authMode === "reset" ? "Escribí tu email." : "Completá el email y la contraseña."; return route(false); }
+    authBusy = true; route(false);
+    try {
+      if (authMode === "reset") { await Auth.resetPassword(email); authOk = "Si ese email tiene cuenta, te mandamos un link para elegir una contraseña nueva. Revisá también el spam."; }
+      else if (authMode === "up") {
+        if (name) { S.name = name; save(); }
+        const r = await Auth.signUp(email, pw, name);
+        if (r.needsConfirm) { authOk = "Cuenta creada. Revisá tu correo para confirmarla y después ingresá."; authMode = "in"; }
+        else toast("¡Bienvenido al dojo!");
+      } else await Auth.signIn(email, pw);
+      if (Auth.user) location.hash = "#/dojo";
+    } catch (err) { authErr = err.message; }
+    authBusy = false; route(false);
+  } else if (id === "newpassform") {
+    e.preventDefault();
+    const f = new FormData(e.target), pw = f.get("password") || "", pw2 = f.get("password2") || "";
+    authErr = "";
+    if (pw.length < 6) { authErr = "La contraseña tiene que tener al menos 6 caracteres."; return route(false); }
+    if (pw !== pw2) { authErr = "Las contraseñas no coinciden."; return route(false); }
+    authBusy = true; route(false);
+    try { await Auth.updatePassword(pw); authBusy = false; toast("Contraseña actualizada"); location.hash = "#/progreso"; return; }
+    catch (err) { authErr = err.message; }
+    authBusy = false; route(false);
+  }
 });
 document.addEventListener("keydown", (e) => {
   if ((e.key === "Enter" || e.key === " ") && e.target.matches("[role=button]")) { e.preventDefault(); location.hash = "#/t/" + e.target.dataset.slug; }
@@ -436,6 +526,7 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("input", (e) => {
   if (e.target.id === "q") { F.q = e.target.value; refreshList(); }
   else if (e.target.id === "gq") { gq = e.target.value; $("#vocab").innerHTML = vocabHtml(); }
+  else if (e.target.id === "aviso-text") { $("#aviso-n").textContent = e.target.value.length + " / 400"; }
   else if (e.target.id === "f-name") { S.name = e.target.value.trim(); save(); renderChrome(); }
   else if (e.target.id === "f-belt") { S.belt = e.target.value; save(); renderChrome(); }
 });
@@ -449,6 +540,8 @@ if (/[#&]error_code=/.test(location.hash)) {
 }
 /* Supabase avisa "sesión iniciada" también al volver a la pestaña o renovar el token:
    solo reaccionamos cuando cambia la persona (entra o sale), para no pisar cambios ni re-dibujar de más */
+/* al abrir el link del mail de recuperación, Supabase inicia una sesión temporal: pedir la contraseña nueva */
+Auth.onRecovery(() => { location.hash = "#/nueva-clave"; });
 let syncedFor = null;
 Auth.onChange(async (u) => {
   const id = u ? u.id : null;
@@ -464,6 +557,6 @@ Auth.init();
 document.addEventListener("visibilitychange", () => { if (document.hidden && syncTimer) { clearTimeout(syncTimer); syncTimer = null; pushNow(); } });
 window.addEventListener("pagehide", () => { if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; pushNow(); } });
 /* el Dojo se actualiza solo cada 20 s mientras se mira */
-setInterval(() => { if (Auth.user && (current === "dojo" || current === "dojo-p") && !document.hidden) loadProfiles(); }, 20000);
+setInterval(() => { if (Auth.user && (current === "dojo" || current === "dojo-p" || current === "inicio") && !document.hidden) loadProfiles(); }, 20000);
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

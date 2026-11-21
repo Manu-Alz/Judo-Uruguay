@@ -3,11 +3,11 @@
 App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con su video, progreso personal, el dojo y un vocabulario. Se usa sobre todo en el teléfono (se instala en la pantalla de inicio) y en PC tiene su propio diseño. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
 
 ## Secciones
-- **Inicio**: técnica del día con su video, tu camino por cinturón, frase del día.
+- **Inicio**: avisos del sensei, botón "Estuve en clase", técnica del día con su video, tu camino por cinturón, frase del día.
 - **Técnicas**: filtro por cinturón y buscador. La lista se agrupa como en ManuHQ: familia (Nage-waza / Katame-waza) y grupo (Te-waza, Koshi-waza, Ashi-waza, Ma-sutemi, Yoko-sutemi, Osaekomi, Shime, Kansetsu), con el progreso de cada grupo.
 - **Detalle de técnica**: video oficial del Kodokan embebido, significado, grupo, origen, y estado (sin empezar / en práctica / dominada).
 - **Progreso**: porcentaje total y por cinturón, tu ficha y respaldo.
-- **Dojo**: el sensei (Martin La Cruz) y los judokas en orden alfabético. Muestra a quienes se registraron, con su progreso.
+- **Dojo**: el sensei (Martin La Cruz) y los judokas en orden alfabético, con su cinturón, su progreso y cuántas clases fueron este mes. Marca quién está en el dojo hoy. Al tocar a alguien se abre su ficha.
 - **Vocabulario**: contar hasta diez en japonés, saludos y frases del dojo, el árbitro, términos de técnica, reglas, categorías de peso. Con audio.
 
 ## Diseño
@@ -67,3 +67,16 @@ Si se registra con ese email, su perfil queda marcado como sensei automáticamen
 update public.profiles set is_sensei = true
 where id = (select id from auth.users where lower(email) = lower('email-del-sensei@ejemplo.com'));
 ```
+
+## Qué hace el sensei
+Las funciones del sensei dependen de que su perfil esté marcado como sensei (ver "Senseis" más arriba). Con eso:
+- **Avisos**: publica un aviso (hasta 400 caracteres) desde Inicio; lo ve todo el dojo y solo el sensei lo borra.
+- **Cinturón oficial**: desde la ficha de cada judoka fija su cinturón. Desde ese momento la persona no lo puede cambiar sola.
+- **Asistencia**: cada judoka toca "Estuve en clase" (solo el día de hoy, hora de Montevideo) y el Dojo muestra quién vino hoy y cuántas clases lleva en el mes.
+
+## Cuentas: ajustes en Supabase
+En **Authentication → URL Configuration**: Site URL `https://manu-alz.github.io/Judo-Uruguay/` y la misma dirección en Redirect URLs. Hace falta para el link de recuperación de contraseña (y para el mail de confirmación si está activo).
+Quien olvida su contraseña toca **Olvidé mi contraseña** en Ingresar y recibe un link para elegir una nueva.
+
+## Base de datos
+`supabase/schema.sql` es el estado actual completo (tablas, reglas de seguridad y triggers). Las reglas viven en la base: la app solo llama a la API, así que aunque alguien modifique la página no puede saltarse los permisos. Se probaron con usuarios simulados: un alumno no puede hacerse sensei, ni tocar a otros, ni publicar avisos, ni anotar la asistencia de otro o de otro día.

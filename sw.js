@@ -1,5 +1,5 @@
 ﻿/* Service worker: la app funciona sin senal en el dojo. Subir VERSION al publicar cambios grandes. */
-const VERSION = "judouy-v12";
+const VERSION = "judouy-v14";
 const SHELL = ["./", "index.html", "css/styles.css", "js/data.js", "js/extra.js", "js/vocab.js", "js/videos.js", "js/config.js", "js/auth.js", "js/app.js", "icon.svg", "manifest.webmanifest"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
