@@ -167,7 +167,7 @@ function vInicio() {
       <div class="sec"><h2>Tu camino</h2><a href="#/progreso">${total} / 100</a></div>
       <div class="rail">${BELTS.map((bl) => { const l = techsOfBelt(bl.id), m = mastered(l);
         return `<a class="bcard" href="#/tecnicas" data-belt="${bl.id}" style="--c:${COLORS[bl.id]}"><b>${bl.name}</b><div class="n num">${m}<small> / ${l.length}</small></div><div class="bar"><i style="width:${pct(m, l.length)}%"></i></div></a>`; }).join("")}</div>
-      ${first ? "" : `<a class="btn blue" style="margin-top:14px" href="#/progreso">Poné tu nombre y cinturón</a>`}
+      ${first ? "" : `<a class="btn blue" style="margin-top:14px" href="#/progreso">${isSensei ? "Poné tu nombre" : "Poné tu nombre y cinturón"}</a>`}
       <div class="sec"><h2>Frase del día</h2></div>
       <figure class="quote" style="margin:0"><blockquote>${esc(q[0])}</blockquote><cite>${esc(q[1])}</cite></figure>
       <div class="sec"><h2>Explorar</h2></div>
@@ -259,7 +259,7 @@ function vProgreso() {
   const total = mastered(), p = pct(total, 100);
   return `
   <h1 class="h1">Progreso</h1>
-  <p class="lead">${esc(S.name || "Tu avance")} · cinturón ${beltOf(S.belt).name.toLowerCase()}</p>
+  <p class="lead">${esc(S.name || "Tu avance")} · ${isSensei ? "sensei" : "cinturón " + beltOf(S.belt).name.toLowerCase()}</p>
   <div class="pgrid">
     <div>
       <div class="card ringwrap"><div class="ring">${ringSvg(p)}<div class="n num">${p}%</div></div><div><h2 class="num">${total} / 100</h2><p>${learning()} en práctica<br>${100 - total - learning()} sin empezar</p></div></div>
@@ -272,7 +272,7 @@ function vProgreso() {
       ${accountCard()}
       <div class="card">
         <label class="field"><span>Nombre</span><input id="f-name" value="${esc(S.name)}" placeholder="Tu nombre" autocomplete="given-name" maxlength="40"></label>
-        <label class="field"><span>Cinturón actual</span><select id="f-belt"${beltLocked ? " disabled" : ""}>${LEVELS.map((b) => `<option value="${b.id}"${b.id === S.belt ? " selected" : ""}>${b.name}</option>`).join("")}</select>${beltLocked ? `<small class="sub" style="display:block;margin-top:6px;font-weight:600">Tu sensei fijó tu cinturón.</small>` : ""}</label>
+        ${isSensei ? "" : `<label class="field"><span>Cinturón actual</span><select id="f-belt"${beltLocked ? " disabled" : ""}>${LEVELS.map((b) => `<option value="${b.id}"${b.id === S.belt ? " selected" : ""}>${b.name}</option>`).join("")}</select>${beltLocked ? `<small class="sub" style="display:block;margin-top:6px;font-weight:600">Tu sensei fijó tu cinturón.</small>` : ""}</label>`}
         ${Auth.enabled ? "" : `<button class="btn blue" style="width:100%" data-act="copy-ficha">Copiar mi ficha para el sensei</button>`}
       </div>
       <div class="sec"><h2>Respaldo</h2></div>
