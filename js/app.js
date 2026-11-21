@@ -147,11 +147,11 @@ function checkinCard() {
   const mine = new Set(attOf(uid).map((a) => a.day)), days = weekDays();
   const sem = days.filter((d) => mine.has(d)).length, semCl = days.filter(isClassDay).length;
   const hora = CLASES.hora ? ` · ${CLASES.hora}` : "";
-  const title = cd ? (on ? "Asistencia anotada ✓" : "Hoy hay clase") : (on ? "Clase extra anotada ✓" : "Hoy no hay clase");
+  const title = cd ? (on ? "Asistencia anotada ✓" : "Hoy hay clase") : (on ? "Asistencia anotada ✓" : "Hoy no hay clase");
   const sub = cd && !on ? `${cap(DIAS[dateOf(t).getDay()])}${hora}. Tocá cuando llegues.` : `Próxima clase: ${nextClass()}${hora}`;
   const btn = on ? `<button class="btn ghost sm" data-act="uncheck">Deshacer</button>`
     : cd ? `<button class="btn blue" data-act="checkin">Estuve en clase</button>`
-    : `<button class="btn ghost sm" data-act="checkin">Anotar clase extra</button>`;
+    : "";
   return `<div class="card asist${on ? " on" : ""}${cd && !on ? " hoy-clase" : ""}">
     <div class="asist-top"><div><b>${title}</b><span>${sub}</span></div>${btn}</div>
     <div class="week" aria-label="Semana">${days.map((d) => { const dt = dateOf(d), got = mine.has(d);
