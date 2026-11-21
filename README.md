@@ -53,3 +53,17 @@ No se cargan a mano: cada persona que crea su cuenta aparece sola en el Dojo (la
 
 ## Publicar
 Repo en GitHub, Settings → Pages → rama `main`, carpeta raíz.
+
+## Senseis
+El sensei fijo en pantalla es `SENSEI` en `js/extra.js` (Martin La Cruz). Para que pueda **entrar con su cuenta sin aparecer como alumno**, agregar su email a la tabla `sensei_emails` (en el SQL Editor de Supabase):
+
+```sql
+insert into public.sensei_emails (email) values ('email-del-sensei@ejemplo.com');
+```
+
+Si se registra con ese email, su perfil queda marcado como sensei automáticamente: no figura en la lista de judokas y no se puede ascender solo. Si ya se había registrado antes:
+
+```sql
+update public.profiles set is_sensei = true
+where id = (select id from auth.users where lower(email) = lower('email-del-sensei@ejemplo.com'));
+```

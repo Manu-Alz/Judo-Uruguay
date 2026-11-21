@@ -61,7 +61,7 @@ function speak(text) {
 }
 
 /* ---------- Cuenta y sincronización ---------- */
-let PROFILES = null, syncTimer = null;
+let PROFILES = null, syncTimer = null, isSensei = false;
 function schedulePush() { if (!Auth.user) return; clearTimeout(syncTimer); syncTimer = setTimeout(pushNow, 1200); }
 async function pushNow() {
   if (!Auth.user) return;
@@ -71,6 +71,7 @@ async function pushNow() {
 async function syncDown() {
   try {
     const p = await Auth.getProfile();
+    isSensei = !!(p && p.is_sensei);
     if (p) {
       if (p.name) S.name = p.name;
       if (p.belt) S.belt = p.belt;
@@ -91,7 +92,7 @@ function renderChrome() {
   $("#account").innerHTML = guest ? `<a class="login-btn" href="#/cuenta">Ingresar</a>` : `<a class="me" href="#/progreso" aria-label="Mi perfil">${esc(initial)}</a>`;
   $("#side-foot").innerHTML = guest
     ? `<a class="sidecard" href="#/cuenta"><i class="me" style="font-style:normal">→</i><div><b>Ingresar</b><span>Sumate al dojo</span></div></a>`
-    : `<a class="sidecard" href="#/progreso"><i class="me" style="font-style:normal">${esc(initial)}</i><div><b>${esc(S.name || "Invitado")}</b><span>Cinturón ${beltOf(S.belt).name.toLowerCase()}</span></div></a>`;
+    : `<a class="sidecard" href="#/progreso"><i class="me" style="font-style:normal">${esc(initial)}</i><div><b>${esc(S.name || "Invitado")}</b><span>${isSensei ? "Sensei" : "Cinturón " + beltOf(S.belt).name.toLowerCase()}</span></div></a>`;
 }
 
 /* ---------- Vistas ---------- */
@@ -436,7 +437,7 @@ if (/[#&]error_code=/.test(location.hash)) {
   history.replaceState(null, "", location.pathname + "#/cuenta");
   authErr = expired ? "El link del mail venció o ya se usó. Ingresá con tu email y contraseña; si no podés, creá la cuenta de nuevo." : "No se pudo confirmar el mail. Probá ingresar de nuevo.";
 }
-Auth.onChange(async (u) => { if (u) { await syncDown(); loadProfiles(); } else PROFILES = null; route(false); });
+Auth.onChange(async (u) => { if (u) { await syncDown(); loadProfiles(); } else { PROFILES = null; isSensei = false; } route(false); });
 window.addEventListener("hashchange", () => route(true));
 route(false);
 Auth.init();
