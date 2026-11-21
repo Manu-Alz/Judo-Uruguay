@@ -111,6 +111,8 @@ const WAZA_ES = {
    belt: blanco | amarillo | naranja | verde | azul | marron | negro
    dominadas: lista de slugs (nombre de la técnica en minúsculas) o un número.
    Cada alumno puede tocar "Copiar mi ficha" en Progreso y pegarte su línea acá. */
+const SENSEI = { name: "Martin La Cruz" };
+
 const ALUMNOS = [
   { name: "Agustín", belt: "blanco", dominadas: 0 },
   { name: "Manuel", belt: "blanco", dominadas: 0 },

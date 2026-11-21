@@ -1,25 +1,55 @@
 # Judo Uruguay
 
-App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con su video, progreso personal y el dojo. Pensada primero para el teléfono (se instala en la pantalla de inicio) y también funciona en PC. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
+App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con su video, progreso personal, el dojo y un vocabulario. Se usa sobre todo en el teléfono (se instala en la pantalla de inicio) y en PC tiene su propio diseño. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
 
 ## Secciones
 - **Inicio**: técnica del día con su video, tu camino por cinturón, frase del día.
-- **Técnicas**: las 100, con filtros por cinturón / proyección o suelo / estado y buscador. Las que tienen video llevan un ícono de play.
-- **Detalle**: el video se reproduce dentro de la página, con significado, grupo, origen y botones para marcar la técnica como sin empezar, en práctica o dominada.
-- **Progreso**: porcentaje por cinturón, tu ficha, respaldo.
-- **Dojo**: el grupo en orden alfabético, sin ranking.
-- **Más**: glosario, reglas, categorías de peso, links.
+- **Técnicas**: filtro por cinturón y buscador. La lista se agrupa como en ManuHQ: familia (Nage-waza / Katame-waza) y grupo (Te-waza, Koshi-waza, Ashi-waza, Ma-sutemi, Yoko-sutemi, Osaekomi, Shime, Kansetsu), con el progreso de cada grupo.
+- **Detalle de técnica**: video oficial del Kodokan embebido, significado, grupo, origen, y estado (sin empezar / en práctica / dominada).
+- **Progreso**: porcentaje total y por cinturón, tu ficha y respaldo.
+- **Dojo**: el sensei (Martin La Cruz) y los judokas en orden alfabético. Con cuenta, se ven los que se registraron.
+- **Vocabulario**: contar hasta diez en japonés, saludos y frases del dojo, el árbitro, términos de técnica, reglas, categorías de peso. Con audio.
+
+## Diseño
+Estética de producto tipo SaaS: limpia, clara y con un solo color de marca, el **azul judogi**.
+
+- **Color**: fondo gris azulado suave (`#eef1f7`), tarjetas blancas, texto azul noche (`#0c1226`), acento azul judogi (`#1f45d1`). Verde para "dominada", ámbar para "en práctica", rojo solo para lo prohibido. Los cinturones usan su color real como único toque de color en las listas.
+- **Tipografía**: Plus Jakarta Sans (400 a 800), títulos en 800 con tracking cerrado. Caracteres japoneses en serif (Noto Serif JP).
+- **Formas**: esquinas muy redondeadas (18 a 28 px), sombras suaves y apiladas en vez de bordes, íconos de línea de 1.8 px.
+- **Componentes**: tarjetas, chips de filtro con contador, filas con número y color de cinturón, anillo de progreso, control segmentado para el estado, reproductor con póster y botón de play.
+- **Móvil primero**: barra inferior flotante con el ítem activo en azul, una columna, carrusel horizontal de cinturones, el video arriba en el detalle.
+- **Tablet** (700 px): grillas de dos columnas.
+- **PC** (1000 px o más): barra lateral fija con la marca y el perfil abajo, contenido de hasta 1240 px, Inicio en dos columnas, la lista de técnicas en grilla de 2 a 3 columnas con hover, y el detalle en dos columnas con el video fijo a la izquierda.
+- **Movimiento**: entrada suave de cada pantalla, barras de progreso animadas; se respeta "reducir movimiento".
+
+## Cuentas (opcional)
+Sin configuración, la app funciona igual y el progreso vive en cada teléfono. Para activar el inicio de sesión y ver a los demás en el Dojo se usa [Supabase](https://supabase.com) (plan gratis):
+
+1. Crear un proyecto en Supabase.
+2. En **SQL Editor**, pegar y ejecutar `supabase/schema.sql`.
+3. En **Authentication → Providers → Email**, dejar activo el email. Para que registrarse sea instantáneo, desactivar "Confirm email".
+4. En **Project Settings → API**, copiar **Project URL** y **anon public key** en `js/config.js`.
+5. Subir los cambios. Aparece el botón **Ingresar**.
+
+La anon key está pensada para ir en el navegador; la seguridad la dan las políticas (RLS) del SQL: todos con sesión ven los perfiles, pero cada persona solo edita el suyo y nadie puede nombrarse sensei.
+
+Para marcar a alguien como sensei: `update public.profiles set is_sensei = true where id = '<uuid>';` en el SQL Editor. El sensei fijo de la app está en `SENSEI` de `js/extra.js`.
 
 ## Videos
-Se usa el **reproductor oficial embebido de YouTube** con los videos del canal **KODOKAN** (la serie de las 100 técnicas). No se copia ni se descarga nada: el video se carga desde YouTube al tocar play.
+Reproductor oficial embebido de YouTube con la serie del canal **KODOKAN**. No se copia ni se descarga nada: el video carga desde YouTube al tocar play. `js/videos.js` tiene el ID de cada una de las 100. Si el grupo graba un video propio, un GIF en `media/waza/<nombre-en-minúsculas>.gif` aparece arriba del oficial.
 
-`js/videos.js` guarda el ID de cada video (`"o-goshi": "yhu1mfy2vJ4"`). Hay los 100.
+## Archivos
+- `index.html`, `css/styles.css`: estructura y diseño.
+- `js/app.js`: vistas, rutas y lógica.
+- `js/data.js`: las 100 técnicas, cinturones y frases (el mismo de ManuHQ).
+- `js/extra.js`: significados, alumnos, sensei, links, categorías de peso.
+- `js/vocab.js`: números, saludos y frases.
+- `js/videos.js`: IDs de video.
+- `js/auth.js`, `js/config.js`, `supabase/schema.sql`: cuentas.
+- `sw.js`, `manifest.webmanifest`: instalable y con soporte sin señal.
 
-### Video o GIF propio del dojo
-Si existe `media/waza/<nombre-en-minúsculas>.gif` (ej. `media/waza/o-goshi.gif`), se muestra arriba del video oficial.
-
-## Alumnos
-Cada uno toca **Progreso → Copiar mi ficha** y te manda el texto. Se pega en `ALUMNOS` de `js/extra.js`. El progreso personal vive en el teléfono de cada uno (localStorage).
+## Alumnos sin cuenta
+Se cargan a mano en `ALUMNOS` de `js/extra.js`. Con cuenta, cada uno aparece solo y esa entrada se reemplaza por su perfil.
 
 ## Publicar
 Repo en GitHub, Settings → Pages → rama `main`, carpeta raíz.
