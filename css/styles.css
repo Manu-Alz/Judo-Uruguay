@@ -292,3 +292,13 @@ body.detail .toast{bottom:24px}
 }
 @media (min-width:1360px){ .wgrid{grid-template-columns:repeat(3,minmax(0,1fr))} main{max-width:1240px} }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Dojo: fichas y chips */
+a.person{text-decoration:none;color:inherit;transition:box-shadow .2s,transform .2s}
+a.person:hover{box-shadow:0 1px 2px rgba(12,18,38,.05),0 14px 28px -12px rgba(12,18,38,.22);transform:translateY(-2px)}
+.avatar.big{width:84px;height:84px;flex:0 0 84px;font-size:2.1rem}
+.avatar.big::after{width:24px;height:24px}
+.tchips{display:flex;flex-wrap:wrap;gap:8px}
+.tchip{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:99px;background:var(--card);box-shadow:var(--sh-soft);font-size:.84rem;font-weight:700;text-decoration:none}
+.tchip.ok{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ok) 55%,#fff),var(--sh-soft)}
+.tchip.warn{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--warn) 55%,#fff),var(--sh-soft)}

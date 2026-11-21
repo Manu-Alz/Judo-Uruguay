@@ -7,7 +7,7 @@ App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con
 - **Técnicas**: filtro por cinturón y buscador. La lista se agrupa como en ManuHQ: familia (Nage-waza / Katame-waza) y grupo (Te-waza, Koshi-waza, Ashi-waza, Ma-sutemi, Yoko-sutemi, Osaekomi, Shime, Kansetsu), con el progreso de cada grupo.
 - **Detalle de técnica**: video oficial del Kodokan embebido, significado, grupo, origen, y estado (sin empezar / en práctica / dominada).
 - **Progreso**: porcentaje total y por cinturón, tu ficha y respaldo.
-- **Dojo**: el sensei (Martin La Cruz) y los judokas en orden alfabético. Con cuenta, se ven los que se registraron.
+- **Dojo**: el sensei (Martin La Cruz) y los judokas en orden alfabético. Muestra a quienes se registraron, con su progreso.
 - **Vocabulario**: contar hasta diez en japonés, saludos y frases del dojo, el árbitro, términos de técnica, reglas, categorías de peso. Con audio.
 
 ## Diseño
@@ -42,14 +42,14 @@ Reproductor oficial embebido de YouTube con la serie del canal **KODOKAN**. No s
 - `index.html`, `css/styles.css`: estructura y diseño.
 - `js/app.js`: vistas, rutas y lógica.
 - `js/data.js`: las 100 técnicas, cinturones y frases (el mismo de ManuHQ).
-- `js/extra.js`: significados, alumnos, sensei, links, categorías de peso.
+- `js/extra.js`: significados, sensei, links, categorías de peso.
 - `js/vocab.js`: números, saludos y frases.
 - `js/videos.js`: IDs de video.
 - `js/auth.js`, `js/config.js`, `supabase/schema.sql`: cuentas.
 - `sw.js`, `manifest.webmanifest`: instalable y con soporte sin señal.
 
-## Alumnos sin cuenta
-Se cargan a mano en `ALUMNOS` de `js/extra.js`. Con cuenta, cada uno aparece solo y esa entrada se reemplaza por su perfil.
+## Alumnos
+No se cargan a mano: cada persona que crea su cuenta aparece sola en el Dojo (la base crea su perfil al registrarse). Todos con sesión ven el cinturón y el progreso de los demás, y al tocar a alguien se abre su ficha con lo que domina y lo que está practicando. El Dojo se actualiza cada 20 segundos.
 
 ## Publicar
 Repo en GitHub, Settings → Pages → rama `main`, carpeta raíz.

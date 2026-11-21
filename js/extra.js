@@ -113,12 +113,6 @@ const WAZA_ES = {
    Cada alumno puede tocar "Copiar mi ficha" en Progreso y pegarte su línea acá. */
 const SENSEI = { name: "Martin La Cruz" };
 
-const ALUMNOS = [
-  { name: "Agustín", belt: "blanco", dominadas: 0 },
-  { name: "Manuel", belt: "blanco", dominadas: 0 },
-  { name: "Maxime", belt: "blanco", dominadas: 0 },
-  { name: "Thiago", belt: "blanco", dominadas: 0 },
-];
 
 /* Links útiles */
 const LINKS = [

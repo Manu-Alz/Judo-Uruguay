@@ -65,7 +65,8 @@ let PROFILES = null, syncTimer = null;
 function schedulePush() { if (!Auth.user) return; clearTimeout(syncTimer); syncTimer = setTimeout(pushNow, 1200); }
 async function pushNow() {
   if (!Auth.user) return;
-  try { await Auth.saveProfile({ name: S.name, belt: S.belt, done: slugsWith(2), learning: slugsWith(1) }); } catch {}
+  try { await Auth.saveProfile({ name: S.name, belt: S.belt, done: slugsWith(2), learning: slugsWith(1) }); }
+  catch (e) { if (!pushNow.warned) { pushNow.warned = true; toast("No pude guardar tu progreso en la nube"); } }
 }
 async function syncDown() {
   try {
@@ -82,7 +83,7 @@ async function syncDown() {
 }
 async function loadProfiles() {
   if (!Auth.user) return;
-  try { PROFILES = await Auth.listProfiles(); if (current === "dojo") route(false); } catch {}
+  try { PROFILES = await Auth.listProfiles(); if (current === "dojo" || current === "dojo-p") { const y = window.scrollY; route(false); window.scrollTo(0, y); } } catch {}
 }
 function renderChrome() {
   const u = Auth.user, initial = (S.name.trim()[0] || u?.email?.[0] || "?").toUpperCase();
@@ -253,33 +254,58 @@ function vCuenta() {
   </div>`;
 }
 
-/* Dojo */
-const alumnoCount = (a) => (Array.isArray(a.dominadas) ? a.dominadas.length : a.dominadas || 0);
+/* Dojo: solo quienes se registran en la app (Supabase) + el sensei */
+const senseiCards = (extra = []) => [{ name: SENSEI.name }, ...extra].map((s) => `<div class="sensei" style="margin-bottom:12px"><div class="sj" aria-hidden="true">師</div><div><small>Sensei</small><b>${esc(s.name)}</b></div></div>`).join("");
+const countOf = (p) => (p.me ? mastered() : (p.done || []).filter((s) => BY_SLUG[s]).length);
+function dojoPeople() {
+  if (!PROFILES) return null;
+  const mine = Auth.user && Auth.user.id;
+  return PROFILES.filter((p) => !p.is_sensei).map((p) => {
+    const me = p.id === mine;
+    return { ...p, me, name: (me ? S.name : p.name) || p.name || "Sin nombre", belt: me ? S.belt : p.belt, done: me ? slugsWith(2) : p.done || [], learning: me ? slugsWith(1) : p.learning || [] };
+  }).sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
 function vDojo() {
-  const logged = !!Auth.user, fk = (n) => norm(n.trim().split(/\s+/)[0] || "");
-  let people = [];
-  const senseis = [{ name: SENSEI.name }];
-  if (logged && PROFILES) {
-    for (const p of PROFILES) {
-      if (p.is_sensei) { if (norm(p.name) !== norm(SENSEI.name)) senseis.push({ name: p.name || "Sensei" }); continue; }
-      people.push({ name: p.name || "Sin nombre", belt: p.belt, n: (p.done || []).length, me: p.id === Auth.user.id });
-    }
-  }
-  const have = new Set(people.map((p) => fk(p.name)));
-  for (const a of ALUMNOS) if (!have.has(fk(a.name))) people.push({ name: a.name, belt: a.belt, n: alumnoCount(a) });
-  const mk = fk(S.name);
-  if (!logged && mk) { const me = people.find((p) => fk(p.name) === mk); if (me) Object.assign(me, { belt: S.belt, n: mastered(), me: true }); else people.push({ name: S.name.trim(), belt: S.belt, n: mastered(), me: true }); }
-  people.sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const logged = !!Auth.user, people = logged ? dojoPeople() : null;
+  const extraSensei = logged && PROFILES ? PROFILES.filter((p) => p.is_sensei && norm(p.name) !== norm(SENSEI.name)).map((p) => ({ name: p.name || "Sensei" })) : [];
+  let body;
+  if (!Auth.enabled) body = `<div class="notice">Las cuentas todavía no están conectadas.</div>`;
+  else if (!logged) body = `<div class="card"><p style="font-weight:800">Mirá quién más está en la app</p><p class="sub" style="font-size:.88rem;margin:2px 0 14px">Iniciá sesión o creá tu cuenta para ver a los judokas del dojo y su progreso, y para que ellos te vean a vos.</p><a class="btn blue sm" href="#/cuenta">Ingresar o crear cuenta</a></div>`;
+  else if (!people) body = `<div class="empty">Cargando el dojo…</div>`;
+  else if (!people.length) body = `<div class="empty">Todavía no hay judokas registrados.</div>`;
+  else body = `<div class="sec"><h2>Judokas</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${people.length}</span></div>
+    <div class="people">${people.map((a) => { const b = beltOf(a.belt), n = countOf(a);
+      return `<a class="card person" href="#/dojo/${a.id}"><div class="avatar" style="--c:${b.color}">${esc(a.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(a.name)}</b><span>Cinturón ${b.name.toLowerCase()}${a.me ? " · vos" : ""}</span><div class="bar"><i style="width:${n}%"></i></div></div><div class="n num">${n}<small>DE 100</small></div></a>`; }).join("")}</div>`;
   return `
   <h1 class="h1">Dojo</h1>
-  <p class="lead">${people.length} judokas, en orden alfabético. Acá no hay ranking: se crece juntos.</p>
-  ${senseis.map((s) => `<div class="sensei" style="margin-bottom:12px"><div class="sj" aria-hidden="true">師</div><div><small>Sensei</small><b>${esc(s.name)}</b></div></div>`).join("")}
-  ${Auth.enabled && !logged ? `<div class="card" style="margin:14px 0"><p style="font-weight:800">Mirá quién más está en la app</p><p class="sub" style="font-size:.88rem;margin:2px 0 14px">Iniciá sesión para ver a los demás judokas que ya se registraron y sumarte.</p><a class="btn blue sm" href="#/cuenta">Ingresar o crear cuenta</a></div>` : ""}
-  <div class="sec"><h2>Judokas</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${people.length}</span></div>
-  <div class="people">${people.map((a) => { const b = beltOf(a.belt);
-    return `<div class="card person"><div class="avatar" style="--c:${b.color}">${esc(a.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(a.name)}</b><span>Cinturón ${b.name.toLowerCase()}${a.me ? " · vos" : ""}</span><div class="bar"><i style="width:${a.n}%"></i></div></div><div class="n num">${a.n}<small>DE 100</small></div></div>`; }).join("")}</div>
+  <p class="lead">${people && people.length ? `${people.length} judoka${people.length === 1 ? "" : "s"}, en orden alfabético. ` : ""}Acá no hay ranking: se crece juntos. Tocá a alguien para ver su progreso.</p>
+  ${senseiCards(extraSensei)}
+  ${body}
   <div class="sec"><h2>Judokan</h2></div>
   <a class="card link" href="${LINKS[0].u}" target="_blank" rel="noopener"><div><b>Judokan Uruguay</b><span>Horarios, noticias y contacto</span></div>${ARROW}</a>`;
+}
+/* Ficha de un judoka: su progreso completo */
+function vJudoka(id) {
+  const p = (dojoPeople() || []).find((x) => x.id === id);
+  if (!p) return `<button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button><div class="empty">${PROFILES ? "No encontré a esa persona." : "Cargando…"}</div>`;
+  const b = beltOf(p.belt), dn = new Set(p.done), ln = new Set(p.learning), total = countOf(p), pc = pct(total, 100);
+  const chips = (set, cls) => TECHS.filter((t) => set.has(t.slug)).map((t) => `<a class="tchip ${cls}" href="#/t/${t.slug}"><i class="belt-sw" style="--c:${beltOf(t.belt).color}"></i>${t.name}</a>`).join("");
+  return `
+  <button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button>
+  <div class="pgrid">
+    <div>
+      <div class="card ringwrap"><div class="avatar big" style="--c:${b.color}">${esc(p.name.trim()[0]?.toUpperCase() || "?")}</div><div><h2>${esc(p.name)}${p.me ? " <span class=\"sub\" style=\"font-size:.9rem\">· vos</span>" : ""}</h2><p>Cinturón ${b.name.toLowerCase()}<br><b class="num">${total} / 100</b> dominadas · ${ln.size} en práctica</p></div></div>
+      <div class="sec"><h2>Por cinturón</h2></div>
+      ${BELTS.map((bl) => { const l = techsOfBelt(bl.id), m = l.filter((t) => dn.has(t.slug)).length;
+        return `<div class="card brow" style="--c:${bl.id === "negro" ? "#161a26" : COLORS[bl.id]}"><div class="h"><i class="belt-sw" style="--c:${COLORS[bl.id]};width:16px;height:16px"></i><b>${bl.name}</b><span class="num">${m} / ${l.length}</span></div><div class="bar"><i style="width:${pct(m, l.length)}%"></i></div></div>`; }).join("")}
+    </div>
+    <div>
+      <div class="sec" style="margin-top:0"><h2>Dominadas</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${total}</span></div>
+      <div class="tchips">${chips(dn, "ok") || `<p class="sub">Todavía ninguna.</p>`}</div>
+      <div class="sec"><h2>En práctica</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${ln.size}</span></div>
+      <div class="tchips">${chips(ln, "warn") || `<p class="sub">Ninguna por ahora.</p>`}</div>
+    </div>
+  </div>`;
 }
 
 /* Vocabulario */
@@ -331,6 +357,14 @@ function route(isNav) {
   if (h[0] === "t" && h[1] && BY_SLUG[h[1]]) {
     current = "t"; view.innerHTML = vDetalle(h[1]); window.scrollTo(0, 0); afterDetalle(h[1]); return;
   }
+  if (h[0] === "dojo" && h[1]) {
+    const first = current !== "dojo-p"; current = "dojo-p";
+    const y = window.scrollY; view.innerHTML = vJudoka(h[1]);
+    document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => { if (a.dataset.tab === "dojo") a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    window.scrollTo(0, first ? 0 : y);
+    if (first && Auth.user) loadProfiles();
+    return;
+  }
   const name = VIEWS[h[0]] ? h[0] : "inicio";
   const keep = name === current ? window.scrollY : 0;
   const entering = name !== current;
@@ -351,7 +385,7 @@ document.addEventListener("click", (e) => {
   switch (el.dataset.act) {
     case "open": e.preventDefault(); location.hash = "#/t/" + slug; break;
     case "goto": location.replace("#/t/" + slug); break;
-    case "back": if (navCount > 0) history.back(); else location.hash = "#/tecnicas"; break;
+    case "back": if (navCount > 0) history.back(); else location.hash = el.dataset.to || "#/tecnicas"; break;
     case "play": $("#video").innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(el.dataset.id)}?autoplay=1&rel=0&playsinline=1&modestbranding=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video de la técnica"></iframe>`; break;
     case "speak": speak(el.dataset.t); break;
     case "cycle": e.stopPropagation(); setSt(slug, (st(slug) + 1) % 3); if (current === "tecnicas") { const y = window.scrollY; refreshList(); window.scrollTo(0, y); } break;
@@ -406,5 +440,7 @@ Auth.onChange(async (u) => { if (u) { await syncDown(); loadProfiles(); } else P
 window.addEventListener("hashchange", () => route(true));
 route(false);
 Auth.init();
+/* el Dojo se actualiza solo cada 20 s mientras se mira */
+setInterval(() => { if (Auth.user && (current === "dojo" || current === "dojo-p") && !document.hidden) loadProfiles(); }, 20000);
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
