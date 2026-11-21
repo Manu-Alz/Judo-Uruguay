@@ -289,9 +289,7 @@ function vDojo() {
   <h1 class="h1">Dojo</h1>
   <p class="lead">${people && people.length ? `${people.length} judoka${people.length === 1 ? "" : "s"}, en orden alfabético. ` : ""}Acá no hay ranking: se crece juntos. Tocá a alguien para ver su progreso.</p>
   ${senseiCards(extraSensei)}
-  ${body}
-  <div class="sec"><h2>Judokan</h2></div>
-  <a class="card link" href="${LINKS[0].u}" target="_blank" rel="noopener"><div><b>Judokan Uruguay</b><span>Horarios, noticias y contacto</span></div>${ARROW}</a>`;
+  ${body}`;
 }
 /* Ficha de un judoka: su progreso completo */
 function vJudoka(id) {

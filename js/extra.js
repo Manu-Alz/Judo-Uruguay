@@ -116,7 +116,6 @@ const SENSEI = { name: "Martin La Cruz" };
 
 /* Links útiles */
 const LINKS = [
-  { t: "Judokan Uruguay", d: "Asociación de Artes Marciales Judokan · Montevideo", u: "https://manu-alz.github.io/Judokan/" },
   { t: "Kodokan (oficial)", d: "Instituto fundado por Jigoro Kano", u: "https://kodokan.org/" },
   { t: "IJF · Federación Internacional", d: "Resultados, reglas y rankings", u: "https://www.ijf.org/" },
 ];
