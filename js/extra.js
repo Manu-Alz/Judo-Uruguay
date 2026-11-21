@@ -114,7 +114,7 @@ const WAZA_ES = {
 const SENSEI = { name: "Martin La Cruz" };
 
 /* Días de clase del dojo (0 = domingo … 6 = sábado). hora es opcional, por ejemplo "19:00". */
-const CLASES = { dias: [2, 4], hora: "" };
+const CLASES = { dias: [2, 4], hora: "5:30 a 7:00" };
 
 
 /* Links útiles */
