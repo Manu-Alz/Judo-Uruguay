@@ -57,7 +57,11 @@ const ringSvg = (p) => { const r = 42, c = 2 * Math.PI * r; return `<svg viewBox
 const poster = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 function speak(text) {
   if (!("speechSynthesis" in window)) return toast("Tu navegador no tiene audio");
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "ja-JP"; u.rate = .8; speechSynthesis.speak(u); } catch {}
+  try {
+    const voices = speechSynthesis.getVoices();
+    if (voices.length && !voices.some((v) => /^ja/i.test(v.lang))) return toast("Tu dispositivo no tiene voz en japonés");
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "ja-JP"; u.rate = .8; speechSynthesis.speak(u);
+  } catch {}
 }
 
 /* ---------- Cuenta y sincronización ---------- */
@@ -74,9 +78,13 @@ async function syncDown() {
     isSensei = !!(p && p.is_sensei);
     if (p) {
       if (p.name) S.name = p.name;
-      if (p.belt) S.belt = p.belt;
-      for (const s of p.done || []) S.prog[s] = 2;
-      for (const s of p.learning || []) if (!S.prog[s]) S.prog[s] = 1;
+      /* la nube manda si ya tiene progreso; si está vacía (cuenta recién creada), se queda lo de este dispositivo */
+      if ((p.done || []).length || (p.learning || []).length) {
+        S.prog = {};
+        for (const s of p.done || []) if (BY_SLUG[s]) S.prog[s] = 2;
+        for (const s of p.learning || []) if (BY_SLUG[s] && !S.prog[s]) S.prog[s] = 1;
+        if (p.belt) S.belt = p.belt;
+      } else if (p.belt && p.belt !== "blanco") S.belt = p.belt;
     } else if (!S.name) S.name = Auth.user.user_metadata?.name || "";
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
     await pushNow();
@@ -287,6 +295,7 @@ function vDojo() {
 }
 /* Ficha de un judoka: su progreso completo */
 function vJudoka(id) {
+  if (!Auth.user) return `<button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button><div class="card authbox"><p style="font-weight:800">Iniciá sesión para ver esta ficha</p><p class="sub" style="font-size:.88rem;margin:2px 0 14px">El progreso de cada judoka lo ven quienes tienen cuenta en el dojo.</p><a class="btn blue sm" href="#/cuenta">Ingresar o crear cuenta</a></div>`;
   const p = (dojoPeople() || []).find((x) => x.id === id);
   if (!p) return `<button class="back" data-act="back" data-to="#/dojo"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Dojo</button><div class="empty">${PROFILES ? "No encontré a esa persona." : "Cargando…"}</div>`;
   const b = beltOf(p.belt), dn = new Set(p.done), ln = new Set(p.learning), total = countOf(p), pc = pct(total, 100);
@@ -348,31 +357,34 @@ function vVocabulario() {
 
 /* ---------- Router ---------- */
 const VIEWS = { inicio: vInicio, tecnicas: vTecnicas, progreso: vProgreso, dojo: vDojo, vocabulario: vVocabulario, cuenta: vCuenta };
-let current = "", navCount = 0;
+let current = "", navCount = 0, lastKey = "";
+const SCROLLS = {};                       /* posición de scroll recordada por pantalla */
+const setTab = (name) => document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => { if (a.dataset.tab === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
 function route(isNav) {
-  if (isNav) navCount++;
-  let h = (location.hash || "#/inicio").replace(/^#\/?/, "").split("/");
+  const key = location.hash || "#/inicio";
+  if (isNav) { navCount++; if (lastKey) SCROLLS[lastKey] = window.scrollY; }     /* guardar dónde estaba */
+  const prev = current;
+  let h = key.replace(/^#\/?/, "").split("/");
   if (h[0] === "mas") h = ["vocabulario"];
   document.body.classList.toggle("detail", h[0] === "t");
   renderChrome();
+  let kind, restore = false;
   if (h[0] === "t" && h[1] && BY_SLUG[h[1]]) {
-    current = "t"; view.innerHTML = vDetalle(h[1]); window.scrollTo(0, 0); afterDetalle(h[1]); return;
+    kind = "t"; current = kind; view.innerHTML = vDetalle(h[1]); setTab("tecnicas"); window.scrollTo(0, 0); afterDetalle(h[1]);
+  } else if (h[0] === "dojo" && h[1]) {
+    kind = "dojo-p"; const same = prev === kind; current = kind; const y = window.scrollY;
+    view.innerHTML = vJudoka(h[1]); setTab("dojo"); window.scrollTo(0, same ? y : 0);
+    if (!same && Auth.user) loadProfiles();
+  } else {
+    kind = VIEWS[h[0]] ? h[0] : "inicio";
+    const same = kind === prev, y = window.scrollY;
+    current = kind; view.innerHTML = VIEWS[kind](); setTab(kind);
+    /* volviendo desde una técnica o ficha: reponer el scroll donde estaba la lista */
+    restore = (prev === "t" || prev === "dojo-p") && SCROLLS[key] != null;
+    window.scrollTo(0, same ? y : restore ? SCROLLS[key] : 0);
+    if (kind === "dojo" && !same) loadProfiles();
   }
-  if (h[0] === "dojo" && h[1]) {
-    const first = current !== "dojo-p"; current = "dojo-p";
-    const y = window.scrollY; view.innerHTML = vJudoka(h[1]);
-    document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => { if (a.dataset.tab === "dojo") a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
-    window.scrollTo(0, first ? 0 : y);
-    if (first && Auth.user) loadProfiles();
-    return;
-  }
-  const name = VIEWS[h[0]] ? h[0] : "inicio";
-  const keep = name === current ? window.scrollY : 0;
-  const entering = name !== current;
-  current = name; view.innerHTML = VIEWS[name]();
-  document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => { if (a.dataset.tab === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
-  window.scrollTo(0, keep);
-  if (name === "dojo" && entering) loadProfiles();
+  lastKey = key;
 }
 const refreshList = () => { $("#list").innerHTML = listHtml(); };
 
@@ -437,10 +449,22 @@ if (/[#&]error_code=/.test(location.hash)) {
   history.replaceState(null, "", location.pathname + "#/cuenta");
   authErr = expired ? "El link del mail venció o ya se usó. Ingresá con tu email y contraseña; si no podés, creá la cuenta de nuevo." : "No se pudo confirmar el mail. Probá ingresar de nuevo.";
 }
-Auth.onChange(async (u) => { if (u) { await syncDown(); loadProfiles(); } else { PROFILES = null; isSensei = false; } route(false); });
+/* Supabase avisa "sesión iniciada" también al volver a la pestaña o renovar el token:
+   solo reaccionamos cuando cambia la persona (entra o sale), para no pisar cambios ni re-dibujar de más */
+let syncedFor = null;
+Auth.onChange(async (u) => {
+  const id = u ? u.id : null;
+  if (id === syncedFor) return;
+  syncedFor = id;
+  if (u) { await syncDown(); loadProfiles(); } else { PROFILES = null; isSensei = false; }
+  route(false);
+});
 window.addEventListener("hashchange", () => route(true));
 route(false);
 Auth.init();
+/* al salir de la pestaña, guardar ya lo pendiente (sin esperar el retraso) */
+document.addEventListener("visibilitychange", () => { if (document.hidden && syncTimer) { clearTimeout(syncTimer); syncTimer = null; pushNow(); } });
+window.addEventListener("pagehide", () => { if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; pushNow(); } });
 /* el Dojo se actualiza solo cada 20 s mientras se mira */
 setInterval(() => { if (Auth.user && (current === "dojo" || current === "dojo-p") && !document.hidden) loadProfiles(); }, 20000);
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
