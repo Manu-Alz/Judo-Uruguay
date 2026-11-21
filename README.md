@@ -82,7 +82,7 @@ Quien olvida su contraseña toca **Olvidé mi contraseña** en Ingresar y recibe
 `supabase/schema.sql` es el estado actual completo (tablas, reglas de seguridad y triggers). Las reglas viven en la base: la app solo llama a la API, así que aunque alguien modifique la página no puede saltarse los permisos. Se probaron con usuarios simulados: un alumno no puede hacerse sensei, ni tocar a otros, ni publicar avisos, ni anotar la asistencia de otro o de otro día.
 
 ## Clases y asistencia
-Los días de clase se definen en `CLASES` de `js/extra.js` (`dias: [2, 4]` = martes y jueves, 0 es domingo; `hora` es opcional, por ejemplo `"19:00"`). Con eso, Inicio muestra:
+Los días de clase se definen en **dos lugares que deben coincidir**: `CLASES` de `js/extra.js` (lo que dibuja la pantalla; `dias: [2, 4]` = martes y jueves, 0 es domingo; `hora` es texto libre) y la tabla `class_days` de Supabase (lo que la base acepta: solo deja anotar asistencia esos días). Para cambiarlos: editar `CLASES` y, en el SQL Editor, `delete from public.class_days; insert into public.class_days values (1), (3);`. Con eso, Inicio muestra:
 - una **tira de la semana** con los días de clase marcados, el día de hoy resaltado y una tilde en los que fuiste;
 - los días de clase, la tarjeta destacada con **"Estuve en clase"**; los demás días solo dice cuándo es la próxima clase;
 - el conteo del mes como **"5 de 8 clases"** (clases dadas hasta hoy), no como un número suelto.

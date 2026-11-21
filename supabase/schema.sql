@@ -156,9 +156,26 @@ grant select, insert, delete on table public.attendance to authenticated;
 
 create policy "ver asistencia" on public.attendance
   for select to authenticated using (true);
+-- Días de clase (0 = domingo ... 6 = sábado). Solo se editan desde el panel de Supabase.
+create table if not exists public.class_days (
+  dow smallint primary key check (dow between 0 and 6)
+);
+alter table public.class_days enable row level security;
+revoke all on table public.class_days from anon, authenticated;
+grant select on table public.class_days to authenticated;
+create policy "ver dias de clase" on public.class_days
+  for select to authenticated using (true);
+insert into public.class_days (dow) values (2), (4)   -- martes y jueves
+on conflict do nothing;
+
+-- La asistencia solo se anota el día de hoy y solo si hoy hay clase.
 create policy "anotar mi asistencia de hoy" on public.attendance
   for insert to authenticated
-  with check (user_id = (select auth.uid()) and day = ((now() at time zone 'America/Montevideo')::date));
+  with check (
+    user_id = (select auth.uid())
+    and day = ((now() at time zone 'America/Montevideo')::date)
+    and exists (select 1 from public.class_days c where c.dow = extract(dow from day)::int)
+  );
 create policy "quitar mi asistencia de hoy" on public.attendance
   for delete to authenticated
   using (user_id = (select auth.uid()) and day = ((now() at time zone 'America/Montevideo')::date));
