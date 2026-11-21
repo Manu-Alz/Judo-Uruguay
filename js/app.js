@@ -103,7 +103,7 @@ async function syncDown() {
 async function loadProfiles() {
   if (!Auth.user) return;
   try {
-    const [pr, an, at] = await Promise.all([Auth.listProfiles(), Auth.listAnnouncements(), Auth.listAttendance(monthStart())]);
+    const [pr, an, at] = await Promise.all([Auth.listProfiles(), Auth.listAnnouncements(), Auth.listAttendance(weekDays()[0] < monthStart() ? weekDays()[0] : monthStart())]);
     PROFILES = pr; ANN = an; ATT = at;
     const me = pr.find((p) => p.id === Auth.user.id);
     if (me) {
@@ -127,11 +127,74 @@ function renderChrome() {
 }
 
 /* Inicio: asistencia y avisos */
+/* ---------- Clases del dojo (los días se configuran en CLASES, js/extra.js) ---------- */
+const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"], DIAS1 = ["D", "L", "M", "M", "J", "V", "S"];
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const dateOf = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = dateOf(s); return ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); };
+const isClassDay = (s) => CLASES.dias.includes(dateOf(s).getDay());
+const weekDays = () => { const t = todayUY(), dow = dateOf(t).getDay(); const mon = addDays(t, -((dow + 6) % 7)); return Array.from({ length: 7 }, (_, i) => addDays(mon, i)); };
+const heldThisMonth = () => { let n = 0; for (let d = monthStart(), t = todayUY(); d <= t; d = addDays(d, 1)) if (isClassDay(d)) n++; return n; };
+const nextClass = () => { for (let i = 1; i <= 7; i++) { const d = addDays(todayUY(), i); if (isClassDay(d)) return DIAS[dateOf(d).getDay()]; } return ""; };
+const classLabel = () => CLASES.dias.map((d) => DIAS[d]).join(" y ");
+const clases = (n) => `${n} de ${Math.max(heldThisMonth(), n)} clases este mes`;
+
 function checkinCard() {
   if (!Auth.user) return "";
-  const uid = Auth.user.id, on = presentToday(uid), n = monthCount(uid);
-  return `<div class="card checkin${on ? " on" : ""}"><div><b>${on ? "Asistencia anotada hoy ✓" : "¿Viniste a clase hoy?"}</b><span>${ATT ? clases(n) : "…"}</span></div>${on ? `<button class="btn ghost sm" data-act="uncheck">Deshacer</button>` : `<button class="btn blue sm" data-act="checkin">Estuve en clase</button>`}</div>`;
+  const uid = Auth.user.id, t = todayUY(), cd = isClassDay(t), on = presentToday(uid);
+  const mine = new Set(attOf(uid).map((a) => a.day)), days = weekDays();
+  const sem = days.filter((d) => mine.has(d)).length, semCl = days.filter(isClassDay).length;
+  const hora = CLASES.hora ? ` · ${CLASES.hora}` : "";
+  const title = cd ? (on ? "Asistencia anotada ✓" : "Hoy hay clase") : (on ? "Clase extra anotada ✓" : "Hoy no hay clase");
+  const sub = cd && !on ? `${cap(DIAS[dateOf(t).getDay()])}${hora}. Tocá cuando llegues.` : `Próxima clase: ${nextClass()}${hora}`;
+  const btn = on ? `<button class="btn ghost sm" data-act="uncheck">Deshacer</button>`
+    : cd ? `<button class="btn blue" data-act="checkin">Estuve en clase</button>`
+    : `<button class="btn ghost sm" data-act="checkin">Anotar clase extra</button>`;
+  return `<div class="card asist${on ? " on" : ""}${cd && !on ? " hoy-clase" : ""}">
+    <div class="asist-top"><div><b>${title}</b><span>${sub}</span></div>${btn}</div>
+    <div class="week" aria-label="Semana">${days.map((d) => { const dt = dateOf(d), got = mine.has(d);
+      return `<div class="wd${isClassDay(d) ? " cl" : ""}${got ? " got" : ""}${d === t ? " today" : ""}"><small>${DIAS1[dt.getDay()]}</small><i>${got ? CHECK : dt.getDate()}</i></div>`; }).join("")}</div>
+    <p class="asist-foot">${ATT ? `${sem} de ${Math.max(semCl, sem)} esta semana · ${clases(monthCount(uid))}` : "Cargando…"}</p>
+  </div>`;
 }
+
+/* ---------- Prueba de cinturón ----------
+   Para presentarse a la prueba del próximo cinturón hay que tener dominadas TODAS las técnicas de ese
+   cinturón y de los anteriores. La app no sube de cinturón sola: lo confirma el sensei una vez aprobada la prueba. */
+const BELT_ORDER = ["blanco", "amarillo", "naranja", "verde", "azul", "marron", "negro"];
+const beltIdx = (b) => Math.max(0, BELT_ORDER.indexOf(b));
+function examStatus(belt, done) {
+  const target = BELT_ORDER[beltIdx(belt) + 1];
+  if (!target) return null;
+  const need = TECHS.filter((t) => beltIdx(t.belt) <= beltIdx(target));
+  const missing = need.filter((t) => !done.has(t.slug));
+  const own = need.filter((t) => t.belt === target);
+  return { target, missing, ready: !missing.length, ownTotal: own.length, ownDone: own.filter((t) => done.has(t.slug)).length,
+    prevMissing: missing.filter((t) => t.belt !== target), firstMissingBelt: missing.length ? missing[0].belt : target };
+}
+const listosParaPrueba = () => (dojoPeople() || []).map((p) => ({ p, e: examStatus(p.belt, new Set(p.done)) })).filter((x) => x.e && x.e.ready);
+function examCard() {
+  const e = examStatus(S.belt, new Set(slugsWith(2)));
+  if (!e) return `<div class="card exam ready"><b>Cinturón negro</b><span>Llegaste al último cinturón. 🥋</span></div>`;
+  const tb = beltOf(e.target);
+  if (e.ready) return `<div class="card exam ready"><b>¡Listo para la prueba de cinturón ${tb.name.toLowerCase()}!</b><span>Dominás todas las técnicas hasta ese cinturón. Hablá con tu sensei para dar la prueba.</span></div>`;
+  const falta = e.missing.length;
+  return `<div class="card exam"><div class="exam-h"><i class="belt-sw" style="--c:${tb.color};width:16px;height:16px"></i><b>Próximo cinturón: ${tb.name.toLowerCase()}</b></div>
+    <div class="bar" style="--c:${tb.color === "#ffffff" ? "#1f45d1" : tb.color}"><i style="width:${pct(e.ownDone, e.ownTotal)}%"></i></div>
+    <p class="note" style="margin-top:8px">${e.ownDone} de ${e.ownTotal} técnicas de cinturón ${tb.name.toLowerCase()}${e.prevMissing.length ? ` · y te faltan ${e.prevMissing.length} de cinturones anteriores` : ""}. En total te faltan ${falta}.</p>
+    <a class="linkbtn" style="margin:8px 0 0;text-align:left" href="#/tecnicas" data-belt="${e.firstMissingBelt}">Ver las que faltan</a></div>`;
+}
+const readyBanner = () => { if (isSensei || !Auth.user) return ""; const e = examStatus(S.belt, new Set(slugsWith(2))); return e && e.ready ? `<a class="card exam ready" href="#/progreso" style="display:block;margin-top:14px;text-decoration:none"><b>¡Listo para la prueba de cinturón ${beltOf(e.target).name.toLowerCase()}!</b><span>Hablá con tu sensei para dar la prueba.</span></a>` : ""; };
+function listosBlock() {
+  if (!isSensei || !PROFILES) return "";
+  const l = listosParaPrueba();
+  if (!l.length) return "";
+  return `<div class="sec"><h2>Listos para la prueba</h2><span class="sub num" style="font-size:.8rem;font-weight:700">${l.length}</span></div>
+  ${l.map(({ p, e }) => `<a class="card person listo" href="#/dojo/${p.id}"><div class="avatar" style="--c:${beltOf(p.belt).color}">${esc(p.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(p.name)}</b><span>Cinturón ${beltOf(p.belt).name.toLowerCase()} → <b style="display:inline;color:var(--ok)">${beltOf(e.target).name.toLowerCase()}</b></span></div><span class="prueba">Prueba</span></a>`).join("")}`;
+}
+
 function avisosBlock() {
   if (!Auth.user) return "";
   const list = ANN || [];
@@ -153,7 +216,9 @@ function vInicio() {
     <div>
       <div class="hello"><p class="sub" style="font-weight:700">${first ? "Buenas," : "Bienvenido al"}</p><h1 class="h1">${first ? esc(first) : "dojo"} 👋</h1></div>
       ${avisosBlock()}
+      ${listosBlock()}
       ${checkinCard()}
+      ${readyBanner()}
       <section class="hero" aria-label="Técnica del día">
         <p class="k">Técnica del día</p>
         <h2>${tech.name}</h2>
@@ -263,6 +328,7 @@ function vProgreso() {
   <div class="pgrid">
     <div>
       <div class="card ringwrap"><div class="ring">${ringSvg(p)}<div class="n num">${p}%</div></div><div><h2 class="num">${total} / 100</h2><p>${learning()} en práctica<br>${100 - total - learning()} sin empezar</p></div></div>
+      ${isSensei ? "" : `<div style="margin-top:12px">${examCard()}</div>`}
       <div class="sec"><h2>Por cinturón</h2></div>
       ${BELTS.map((b) => { const l = techsOfBelt(b.id), m = mastered(l);
         return `<a class="card brow" href="#/tecnicas" data-belt="${b.id}" style="--c:${b.id === "negro" ? "#161a26" : COLORS[b.id]}"><div class="h"><i class="belt-sw" style="--c:${COLORS[b.id]};width:16px;height:16px"></i><b>${b.name}</b><span class="num">${m} / ${l.length}</span></div><div class="bar"><i style="width:${pct(m, l.length)}%"></i></div></a>`; }).join("")}
@@ -329,7 +395,6 @@ function dojoPeople() {
     return { ...p, me, name: (me ? S.name : p.name) || p.name || "Sin nombre", belt: me ? S.belt : p.belt, done: me ? slugsWith(2) : p.done || [], learning: me ? slugsWith(1) : p.learning || [], hoy: presentToday(p.id), mes: monthCount(p.id) };
   }).sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
-const clases = (n) => `${n} clase${n === 1 ? "" : "s"} este mes`;
 function vDojo() {
   const logged = !!Auth.user, people = logged ? dojoPeople() : null;
   const extraSensei = logged && PROFILES ? PROFILES.filter((p) => p.is_sensei && norm(p.name) !== norm(SENSEI.name)).map((p) => ({ name: p.name || "Sensei" })) : [];
@@ -342,7 +407,7 @@ function vDojo() {
     const hoy = people.filter((p) => p.hoy).length;
     body = `<div class="sec"><h2>Judokas</h2><span class="hoyline"><i></i>${hoy} en el dojo hoy</span></div>
     <div class="people">${people.map((a) => { const b = beltOf(a.belt), n = countOf(a);
-      return `<a class="card person" href="#/dojo/${a.id}"><div class="avatar" style="--c:${b.color}">${esc(a.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(a.name)}${a.hoy ? `<em class="hoy">Hoy</em>` : ""}</b><span>Cinturón ${b.name.toLowerCase()}${a.belt_by_sensei ? " ✓" : ""} · ${clases(a.mes)}${a.me ? " · vos" : ""}</span><div class="bar"><i style="width:${n}%"></i></div></div><div class="n num">${n}<small>DE 100</small></div></a>`; }).join("")}</div>`;
+      return `<a class="card person" href="#/dojo/${a.id}"><div class="avatar" style="--c:${b.color}">${esc(a.name.trim()[0]?.toUpperCase() || "?")}</div><div class="t"><b>${esc(a.name)}${a.hoy ? `<em class="hoy">Hoy</em>` : ""}${isSensei && (examStatus(a.belt, new Set(a.done)) || {}).ready ? `<em class="prueba">Prueba</em>` : ""}</b><span>Cinturón ${b.name.toLowerCase()}${a.belt_by_sensei ? " ✓" : ""} · ${clases(a.mes)}${a.me ? " · vos" : ""}</span><div class="bar"><i style="width:${n}%"></i></div></div><div class="n num">${n}<small>DE 100</small></div></a>`; }).join("")}</div>`;
   }
   return `
   <h1 class="h1">Dojo</h1>
@@ -358,7 +423,11 @@ function vJudoka(id) {
   if (!p) return `${back}<div class="empty">${PROFILES ? "No encontré a esa persona." : "Cargando…"}</div>`;
   const b = beltOf(p.belt), dn = new Set(p.done), ln = new Set(p.learning), total = countOf(p);
   const chips = (set, cls) => TECHS.filter((t) => set.has(t.slug)).map((t) => `<a class="tchip ${cls}" href="#/t/${t.slug}"><i class="belt-sw" style="--c:${beltOf(t.belt).color}"></i>${t.name}</a>`).join("");
-  const senseiBox = isSensei && !p.me ? `<div class="card" style="margin-bottom:14px"><label class="field"><span>Cinturón oficial</span><select id="sb">${LEVELS.map((l) => `<option value="${l.id}"${l.id === p.belt ? " selected" : ""}>${l.name}</option>`).join("")}</select></label><button class="btn blue sm" data-act="setbelt" data-id="${p.id}">Guardar cinturón</button><p class="note">Una vez fijado por el sensei, ${esc(p.name.split(/\s+/)[0])} no lo puede cambiar solo.</p></div>` : "";
+  const ex = examStatus(p.belt, dn), first = esc(p.name.split(/\s+/)[0]);
+  const examBox = !(isSensei && !p.me) ? "" : !ex ? "" : ex.ready
+    ? `<div class="card exam ready" style="margin-bottom:14px"><b>Listo para la prueba de cinturón ${beltOf(ex.target).name.toLowerCase()}</b><span>${first} domina todas las técnicas hasta ese cinturón.</span><button class="btn blue sm" style="margin-top:12px" data-act="aprobar" data-id="${p.id}" data-nbelt="${ex.target}" data-name="${esc(p.name)}">Aprobó la prueba: pasar a ${beltOf(ex.target).name.toLowerCase()}</button></div>`
+    : `<div class="card exam" style="margin-bottom:14px"><b>Próxima prueba: cinturón ${beltOf(ex.target).name.toLowerCase()}</b><span class="note" style="display:block;margin-top:4px">A ${first} le faltan ${ex.missing.length} técnica${ex.missing.length === 1 ? "" : "s"} (${ex.ownDone} de ${ex.ownTotal} del cinturón${ex.prevMissing.length ? `, y ${ex.prevMissing.length} de anteriores` : ""}).</span></div>`;
+  const senseiBox = examBox + (isSensei && !p.me ? `<div class="card" style="margin-bottom:14px"><label class="field"><span>Cinturón oficial</span><select id="sb">${LEVELS.map((l) => `<option value="${l.id}"${l.id === p.belt ? " selected" : ""}>${l.name}</option>`).join("")}</select></label><button class="btn blue sm" data-act="setbelt" data-id="${p.id}">Guardar cinturón</button><p class="note">Una vez fijado por el sensei, ${esc(p.name.split(/\s+/)[0])} no lo puede cambiar solo.</p></div>` : "");
   return `
   ${back}
   <div class="pgrid">
@@ -478,6 +547,8 @@ document.addEventListener("click", (e) => {
         .catch((err) => { const t2 = $("#aviso-text"); if (t2 && !t2.value) t2.value = body; toast(err.message); }); break; }
     case "del-aviso": if (confirm("¿Borrar este aviso?")) Auth.deleteAnnouncement(el.dataset.id)
       .then(() => { ANN = (ANN || []).filter((a) => a.id !== el.dataset.id); lastSig = ""; route(false); toast("Aviso borrado"); }).catch((err) => toast(err.message)); break;
+    case "aprobar": if (confirm(`¿Confirmás que ${el.dataset.name} aprobó la prueba de cinturón ${beltOf(el.dataset.nbelt).name.toLowerCase()}?`)) Auth.setBelt(el.dataset.id, el.dataset.nbelt)
+      .then(() => { lastSig = ""; return loadProfiles(); }).then(() => toast("Cinturón actualizado 🥋")).catch((err) => toast(err.message)); break;
     case "setbelt": Auth.setBelt(el.dataset.id, $("#sb").value)
       .then(() => { lastSig = ""; return loadProfiles(); }).then(() => toast("Cinturón guardado")).catch((err) => toast(err.message)); break;
     case "logout": Auth.signOut().then(() => { PROFILES = null; toast("Sesión cerrada"); location.hash = "#/inicio"; }); break;

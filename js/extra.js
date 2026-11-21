@@ -113,6 +113,9 @@ const WAZA_ES = {
    Cada alumno puede tocar "Copiar mi ficha" en Progreso y pegarte su línea acá. */
 const SENSEI = { name: "Martin La Cruz" };
 
+/* Días de clase del dojo (0 = domingo … 6 = sábado). hora es opcional, por ejemplo "19:00". */
+const CLASES = { dias: [2, 4], hora: "" };
+
 
 /* Links útiles */
 const LINKS = [

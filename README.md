@@ -3,7 +3,7 @@
 App del grupo de judo: las 100 técnicas del Kodokan por cinturón, cada una con su video, progreso personal, el dojo y un vocabulario. Se usa sobre todo en el teléfono (se instala en la pantalla de inicio) y en PC tiene su propio diseño. Sin build ni dependencias: HTML + CSS + JS, lista para GitHub Pages.
 
 ## Secciones
-- **Inicio**: avisos del sensei, botón "Estuve en clase", técnica del día con su video, tu camino por cinturón, frase del día.
+- **Inicio**: avisos del sensei, asistencia de la semana (martes y jueves) con el botón "Estuve en clase", técnica del día con su video, tu camino por cinturón, frase del día.
 - **Técnicas**: filtro por cinturón y buscador. La lista se agrupa como en ManuHQ: familia (Nage-waza / Katame-waza) y grupo (Te-waza, Koshi-waza, Ashi-waza, Ma-sutemi, Yoko-sutemi, Osaekomi, Shime, Kansetsu), con el progreso de cada grupo.
 - **Detalle de técnica**: video oficial del Kodokan embebido, significado, grupo, origen, y estado (sin empezar / en práctica / dominada).
 - **Progreso**: porcentaje total y por cinturón, tu ficha y respaldo.
@@ -80,3 +80,16 @@ Quien olvida su contraseña toca **Olvidé mi contraseña** en Ingresar y recibe
 
 ## Base de datos
 `supabase/schema.sql` es el estado actual completo (tablas, reglas de seguridad y triggers). Las reglas viven en la base: la app solo llama a la API, así que aunque alguien modifique la página no puede saltarse los permisos. Se probaron con usuarios simulados: un alumno no puede hacerse sensei, ni tocar a otros, ni publicar avisos, ni anotar la asistencia de otro o de otro día.
+
+## Clases y asistencia
+Los días de clase se definen en `CLASES` de `js/extra.js` (`dias: [2, 4]` = martes y jueves, 0 es domingo; `hora` es opcional, por ejemplo `"19:00"`). Con eso, Inicio muestra:
+- una **tira de la semana** con los días de clase marcados, el día de hoy resaltado y una tilde en los que fuiste;
+- los días de clase, la tarjeta destacada con **"Estuve en clase"**; los demás días dice cuándo es la próxima y deja anotar una **clase extra**;
+- el conteo del mes como **"5 de 8 clases"** (clases dadas hasta hoy), no como un número suelto.
+El Dojo muestra quién vino hoy y cuántas clases lleva cada uno.
+
+## Prueba de cinturón
+La app **no sube de cinturón sola**, porque hay que dar la prueba. Calcula quién está listo:
+- Para presentarse a la prueba del **próximo cinturón** hay que tener dominadas **todas las técnicas de ese cinturón y de todos los anteriores**.
+- El alumno ve en Progreso cuánto le falta (incluyendo lo que debe de cinturones anteriores) y, cuando está listo, un aviso para hablar con su sensei.
+- El sensei ve en Inicio quiénes están **listos para la prueba**, y en la ficha del alumno tiene el botón **"Aprobó la prueba: pasar a …"**. Al confirmar, el cinturón queda fijado como oficial.
