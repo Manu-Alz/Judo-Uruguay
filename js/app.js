@@ -51,7 +51,8 @@ const PLAYI = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="curren
 const SPK = '<svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg>';
 const markBtn = (slug) => { const s = st(slug); return `<button class="mark" data-act="cycle" data-slug="${slug}" data-s="${s}" aria-label="${["Sin empezar", "En práctica", "Dominada"][s]}. Tocá para cambiar"><span>${s === 2 ? CHECK : ""}</span></button>`; };
 const dailyIdx = () => { const d = new Date(); return d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(); };
-const dailyQuote = () => JUDO_QUOTES[dailyIdx() % JUDO_QUOTES.length];
+const QUOTES_OK = JUDO_QUOTES.filter((q) => !["Waza", "Vocabulario", "Reglamento", "Kata", "Historia"].includes(q[1]));
+const dailyQuote = () => QUOTES_OK[dailyIdx() % QUOTES_OK.length];
 const dailyTech = () => { const l = TECHS.filter((t) => t.video && !t.forbidden); const pool = l.length ? l : TECHS; return pool[dailyIdx() % pool.length]; };
 const ringSvg = (p) => { const r = 42, c = 2 * Math.PI * r; return `<svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="${r}"/><circle class="fg" cx="50" cy="50" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - p / 100)}" stroke-linecap="round"/></svg>`; };
 const poster = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
@@ -171,7 +172,7 @@ function examStatus(belt, done) {
   const need = TECHS.filter((t) => beltIdx(t.belt) <= beltIdx(target));
   const missing = need.filter((t) => !done.has(t.slug));
   const own = need.filter((t) => t.belt === target);
-  return { target, missing, ready: !missing.length, ownTotal: own.length, ownDone: own.filter((t) => done.has(t.slug)).length,
+  return { target, missing, needTotal: need.length, ready: !missing.length, ownTotal: own.length, ownDone: own.filter((t) => done.has(t.slug)).length,
     prevMissing: missing.filter((t) => t.belt !== target), firstMissingBelt: missing.length ? missing[0].belt : target };
 }
 const listosParaPrueba = () => (dojoPeople() || []).map((p) => ({ p, e: examStatus(p.belt, new Set(p.done)) })).filter((x) => x.e && x.e.ready);
@@ -182,8 +183,8 @@ function examCard() {
   if (e.ready) return `<div class="card exam ready"><b>¡Listo para la prueba de cinturón ${tb.name.toLowerCase()}!</b><span>Dominás todas las técnicas hasta ese cinturón. Hablá con tu sensei para dar la prueba.</span></div>`;
   const falta = e.missing.length;
   return `<div class="card exam"><div class="exam-h"><i class="belt-sw" style="--c:${tb.color};width:16px;height:16px"></i><b>Próximo cinturón: ${tb.name.toLowerCase()}</b></div>
-    <div class="bar" style="--c:${tb.color === "#ffffff" ? "#1f45d1" : tb.color}"><i style="width:${pct(e.ownDone, e.ownTotal)}%"></i></div>
-    <p class="note" style="margin-top:8px">${e.ownDone} de ${e.ownTotal} técnicas de cinturón ${tb.name.toLowerCase()}${e.prevMissing.length ? ` · y te faltan ${e.prevMissing.length} de cinturones anteriores` : ""}. En total te faltan ${falta}.</p>
+    <div class="bar" style="--c:${tb.color === "#ffffff" ? "#1f45d1" : tb.color}"><i style="width:${pct(e.needTotal - falta, e.needTotal)}%"></i></div>
+    <p class="note" style="margin-top:10px"><b>Te faltan ${falta} técnica${falta === 1 ? "" : "s"}</b> para presentarte a la prueba: ${e.ownTotal - e.ownDone} de cinturón ${tb.name.toLowerCase()}${e.prevMissing.length ? ` y ${e.prevMissing.length} de cinturones anteriores` : ""}.</p>
     <a class="linkbtn" style="margin:8px 0 0;text-align:left" href="#/tecnicas" data-belt="${e.firstMissingBelt}">Ver las que faltan</a></div>`;
 }
 const readyBanner = () => { if (isSensei || !Auth.user) return ""; const e = examStatus(S.belt, new Set(slugsWith(2))); return e && e.ready ? `<a class="card exam ready" href="#/progreso" style="display:block;margin-top:14px;text-decoration:none"><b>¡Listo para la prueba de cinturón ${beltOf(e.target).name.toLowerCase()}!</b><span>Hablá con tu sensei para dar la prueba.</span></a>` : ""; };
@@ -208,13 +209,32 @@ function avisosBlock() {
 /* ---------- Vistas ---------- */
 let F = { q: "", belt: "todos" };
 
+/* Bienvenida para quien entra sin cuenta: qué es la app y qué hacer primero */
+function welcomeCard() {
+  if (Auth.user || !Auth.enabled) return "";
+  return `<section class="welcome" aria-label="Bienvenida">
+    <p class="k">Judo Uruguay</p>
+    <h1>Tu dojo, en el celular</h1>
+    <p class="wl">Las 100 técnicas del Kodokan con video, tu avance por cinturón y el grupo.</p>
+    <ul class="ticks">
+      <li>Marcá las técnicas que ya dominás</li>
+      <li>Mirá cuánto te falta para el próximo cinturón</li>
+      <li>Enterate de los avisos y anotá tu asistencia</li>
+    </ul>
+    <div class="welcome-btns"><a class="btn blue" href="#/cuenta" data-act="authmode" data-m="up">Crear mi cuenta</a><a class="btn ghost" href="#/cuenta" data-act="authmode" data-m="in">Ya tengo cuenta</a></div>
+    <a class="linkbtn" href="#/tecnicas">Primero quiero mirar las técnicas</a>
+  </section>`;
+}
+
 function vInicio() {
-  const first = S.name.trim().split(/\s+/)[0], total = mastered();
+  const first = S.name.trim().split(/\s+/)[0], total = mastered(), guest = Auth.enabled && !Auth.user;
   const tech = dailyTech(), b = beltOf(tech.belt), q = dailyQuote();
+  const hello = guest ? "" : `<div class="hello"><p class="sub" style="font-weight:700">${first ? "Buenas," : "Bienvenido al"}</p><h1 class="h1">${first ? esc(first) : "dojo"} 👋</h1></div>`;
   return `
   <div class="home">
     <div>
-      <div class="hello"><p class="sub" style="font-weight:700">${first ? "Buenas," : "Bienvenido al"}</p><h1 class="h1">${first ? esc(first) : "dojo"} 👋</h1></div>
+      ${welcomeCard()}
+      ${hello}
       ${avisosBlock()}
       ${listosBlock()}
       ${checkinCard()}
@@ -229,19 +249,12 @@ function vInicio() {
       </section>
     </div>
     <div>
-      <div class="sec"><h2>Tu camino</h2><a href="#/progreso">${total} / 100</a></div>
+      <div class="sec"><h2>Tu camino</h2><a class="more" href="#/progreso">Ver progreso · ${total} / 100</a></div>
       <div class="rail">${BELTS.map((bl) => { const l = techsOfBelt(bl.id), m = mastered(l);
         return `<a class="bcard" href="#/tecnicas" data-belt="${bl.id}" style="--c:${COLORS[bl.id]}"><b>${bl.name}</b><div class="n num">${m}<small> / ${l.length}</small></div><div class="bar"><i style="width:${pct(m, l.length)}%"></i></div></a>`; }).join("")}</div>
-      ${first ? "" : `<a class="btn blue" style="margin-top:14px" href="#/progreso">${isSensei ? "Poné tu nombre" : "Poné tu nombre y cinturón"}</a>`}
+      ${!guest && !first ? `<a class="btn blue" style="margin-top:14px" href="#/progreso">Poné tu nombre</a>` : ""}
       <div class="sec"><h2>Frase del día</h2></div>
       <figure class="quote" style="margin:0"><blockquote>${esc(q[0])}</blockquote><cite>${esc(q[1])}</cite></figure>
-      <div class="sec"><h2>Explorar</h2></div>
-      <div class="tiles">
-        <a class="tile" href="#/tecnicas"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="3"/><path d="M10 8.2l4 1.8-4 1.8zM8 20h8"/></svg><div><b>Técnicas</b><span>Con video</span></div></a>
-        <a class="tile" href="#/progreso"><svg viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/></svg><div><b>Progreso</b><span>Por cinturón</span></div></a>
-        <a class="tile" href="#/dojo"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M16 5.2a3 3 0 010 5.6M18 14.4c1.8.8 3 2.8 3 5.6"/></svg><div><b>Dojo</b><span>El grupo</span></div></a>
-        <a class="tile" href="#/vocabulario"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5zM4 20.5A2.5 2.5 0 006.5 23H20v-5M9 8h6"/></svg><div><b>Vocabulario</b><span>Palabras y números</span></div></a>
-      </div>
     </div>
   </div>`;
 }
@@ -249,8 +262,8 @@ function vInicio() {
 function row(t) {
   const b = beltOf(t.belt);
   return `<div class="trow${t.forbidden ? " forb" : ""}" data-act="open" data-slug="${t.slug}" role="button" tabindex="0">
-    <span class="nb" style="--c:${b.color}"><b class="num">${String(t.n).padStart(2, "0")}</b>${t.video ? `<i class="pv">${PLAYI}</i>` : ""}</span>
-    <div class="t"><b>${t.name}</b><span>${esc(t.es)}</span><span>Cinturón ${b.name.toLowerCase()}${t.origin ? " · " + t.origin : ""}${t.forbidden ? " · prohibida" : ""}</span></div>${markBtn(t.slug)}</div>`;
+    <span class="nb" style="--c:${b.color}"><b class="num">${String(t.n).padStart(2, "0")}</b></span>
+    <div class="t"><b>${t.name}</b><span class="mean">${esc(t.es)}</span><span class="bl"><i class="belt-sw" style="--c:${b.color}"></i>${b.name}${t.forbidden ? " · prohibida en competencia" : ""}</span></div>${markBtn(t.slug)}</div>`;
 }
 /* Lista agrupada como en ManuHQ: familia → grupo (Te-waza, Koshi-waza…) */
 function listHtml() {
@@ -271,15 +284,25 @@ function vTecnicas() {
   const chip = (v, label, sw, n) => `<button class="fchip" data-f="belt" data-v="${v}" aria-pressed="${F.belt === v}">${sw ? `<i class="belt-sw" style="--c:${sw}"></i>` : ""}${label}<em class="num">${n}</em></button>`;
   return `
   <h1 class="h1">Técnicas</h1>
-  <p class="lead">Las 100 del Kodokan, por cinturón. Tocá una para ver el video.</p>
+  <p class="lead">Las 100 del Kodokan. Tocá una para ver el video, y el círculo de la derecha para marcar tu avance.</p>
   <div class="sticky">
     <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Buscar técnica" value="${esc(F.q)}" autocomplete="off" enterkeyhint="search"></label>
     <div class="chips">${chip("todos", "Todas", "", 100)}${BELTS.map((b) => chip(b.id, b.name, COLORS[b.id], techsOfBelt(b.id).length)).join("")}</div>
   </div>
-  <div class="legend"><span><i></i>Sin empezar</span><span><i class="l1"></i>En práctica</span><span><i class="l2"></i>Dominada</span><span>· tocá el círculo para cambiar</span></div>
+  <div class="legend"><span><i></i>Sin empezar</span><span><i class="l1"></i>En práctica</span><span><i class="l2"></i>Dominada</span></div>
   <div id="list">${listHtml()}</div>`;
 }
 
+/* Texto sin acentos, espacios ni puntuación: sirve para detectar textos repetidos */
+const plain = (s) => norm(s).replace(/[^a-z0-9]/g, "");
+/* "Gokyo" y "Habukareta" son jerga: se explican una vez, en el detalle */
+function originNote(t) {
+  if (!t.origin) return "";
+  const txt = /^Gokyo/.test(t.origin)
+    ? `<b>${t.origin}</b>: el Gokyo es el programa clásico de 40 proyecciones, en 5 grupos de 8. Esta técnica es del grupo ${t.origin.split(" ")[1]}.`
+    : `<b>Habukareta</b>: son 8 proyecciones que se sacaron del Gokyo en 1920 pero siguen siendo técnicas oficiales.`;
+  return `<p class="note">${txt}</p>`;
+}
 function vDetalle(slug) {
   const t = BY_SLUG[slug]; if (!t) return vTecnicas();
   const b = beltOf(t.belt), s = st(slug);
@@ -299,8 +322,10 @@ function vDetalle(slug) {
       <h1 class="dtitle">${t.name}</h1>
       <p class="dsub">${esc(t.es)}</p>
       <div class="tags"><span class="tag"><i class="belt-sw" style="--c:${b.color}"></i>Cinturón ${b.name.toLowerCase()}</span><span class="tag">${t.family === "Nage-waza" ? "Proyección" : "Suelo"} · ${esc(t.groupEs)}</span>${t.origin ? `<span class="tag">${t.origin}</span>` : ""}${t.forbidden ? `<span class="tag red">Prohibida en competencia</span>` : ""}</div>
-      ${DESC[slug] ? `<p class="desc">${esc(DESC[slug])}</p>` : ""}
-      <div class="seg" role="group" aria-label="Mi estado">${["Sin empezar", "En práctica", "Dominada"].map((l, v) => `<button data-act="set" data-slug="${slug}" data-v="${v}" aria-pressed="${s === v}">${l}</button>`).join("")}</div>
+      ${DESC[slug] && plain(DESC[slug]) !== plain(t.es) ? `<p class="desc">${esc(DESC[slug])}</p>` : ""}
+      ${originNote(t)}
+      <p class="sublabel">Tu avance en esta técnica</p>
+      <div class="seg" style="margin-top:8px" role="group" aria-label="Mi estado">${["Sin empezar", "En práctica", "Dominada"].map((l, v) => `<button data-act="set" data-slug="${slug}" data-v="${v}" aria-pressed="${s === v}">${l}</button>`).join("")}</div>
       ${risky ? `<p class="note">Las estrangulaciones y luxaciones se practican siempre con supervisión del sensei.</p>` : ""}
       <div class="nav2"><button data-act="goto" data-slug="${prev.slug}"><small>Anterior</small><b>${esc(prev.name)}</b></button><button data-act="goto" data-slug="${next.slug}"><small>Siguiente</small><b>${esc(next.name)}</b></button></div>
     </div>
@@ -513,6 +538,11 @@ function route(isNav) {
     window.scrollTo(0, same ? y : restore ? SCROLLS[key] : 0);
     if ((kind === "dojo" || kind === "inicio") && !same && Auth.user) loadProfiles();
   }
+  /* título de la pestaña por pantalla, y el foco al contenido nuevo (lectores de pantalla y teclado) */
+  const TITLES = { tecnicas: "Técnicas", progreso: "Progreso", dojo: "Dojo", vocabulario: "Vocabulario", cuenta: "Cuenta", "nueva-clave": "Nueva contraseña" };
+  const pageName = kind === "t" ? BY_SLUG[h[1]].name : kind === "dojo-p" ? "Ficha" : TITLES[kind];
+  document.title = pageName ? `${pageName} · Judo Uruguay` : "Judo Uruguay";
+  if (isNav) view.focus({ preventScroll: true });
   lastKey = key;
 }
 const refreshList = () => { $("#list").innerHTML = listHtml(); };

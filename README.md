@@ -93,3 +93,11 @@ La app **no sube de cinturón sola**, porque hay que dar la prueba. Calcula qui�
 - Para presentarse a la prueba del **próximo cinturón** hay que tener dominadas **todas las técnicas de ese cinturón y de todos los anteriores**.
 - El alumno ve en Progreso cuánto le falta (incluyendo lo que debe de cinturones anteriores) y, cuando está listo, un aviso para hablar con su sensei.
 - El sensei ve en Inicio quiénes están **listos para la prueba**, y en la ficha del alumno tiene el botón **"Aprobó la prueba: pasar a …"**. Al confirmar, el cinturón queda fijado como oficial.
+
+## Claridad y accesibilidad (criterios de diseño)
+- **Primera impresión**: quien entra sin cuenta ve una bienvenida que explica qué es la app, qué gana y qué hacer primero (crear cuenta, ingresar o mirar las técnicas). Ya no hay accesos duplicados: la navegación es la barra inferior (o lateral en PC).
+- **Una idea por elemento**: en las filas de técnicas se ve nombre, significado completo (hasta 2 líneas) y cinturón; la jerga ("Gokyo", "Habukareta") se explica una vez, en el detalle, y no se repite el mismo texto en varios lugares.
+- **Lectura**: ningún texto por debajo de 11 px; las frases del día son frases (no definiciones de técnicas); el progreso hacia el próximo cinturón dice cuántas técnicas faltan y de qué cinturón.
+- **Táctil**: todos los botones y filtros miden al menos 40 a 44 px.
+- **Navegación**: cada pantalla cambia el título de la pestaña (por ejemplo "O-goshi · Judo Uruguay") y mueve el foco al contenido nuevo, para teclado y lectores de pantalla; al volver de una técnica la lista queda donde estaba.
+- Se revisó en 320, 375, 820, 1280 y 1920 px, sin desbordes.
